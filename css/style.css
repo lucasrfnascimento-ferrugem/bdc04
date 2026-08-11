@@ -116,7 +116,7 @@ button{font-family:var(--font-body); cursor:pointer;}
 
 main#view-root{
   flex:1; margin-left:236px; padding:28px 34px 60px;
-  max-width:1180px;
+  max-width:1180px; min-width:0;
 }
 
 .topbar{display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
