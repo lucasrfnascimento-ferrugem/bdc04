@@ -45,6 +45,39 @@ export function rankingGolsAssistencias(atletas, jogos){
     .sort((a, b) => (b.gols + b.assistencias) - (a.gols + a.assistencias) || b.gols - a.gols);
 }
 
+// Quantidade de partidas realizadas em que o atleta esteve escalado
+// (na inicial ou na final), independente de ter marcado gol/assistência.
+export function contagemJogosPorAtleta(jogos){
+  const map = {};
+  jogosRealizados(jogos).forEach(j => {
+    const ids = new Set([
+      ...normalizeEscalacao(j.escalacaoInicial).map(e => e.atletaId),
+      ...normalizeEscalacao(j.escalacaoFinal).map(e => e.atletaId),
+    ]);
+    ids.forEach(id => { map[id] = (map[id] || 0) + 1; });
+  });
+  return map;
+}
+
+// Estatísticas combinadas de cada atleta (jogos, gols, assistências, nota
+// média), calculadas a partir de um conjunto de jogos já filtrado (por
+// período ou por partida específica) — usado na tela de Ranking.
+export function statsPorAtleta(atletas, jogos){
+  const gaMap = golsEAssistenciasPorAtleta(jogos);
+  const jogosMap = contagemJogosPorAtleta(jogos);
+  return atletas.map(a => {
+    const { media, qtd } = mediaNotaAtleta(a.id, jogos);
+    return {
+      atleta: a,
+      jogosCount: jogosMap[a.id] || 0,
+      gols: gaMap[a.id]?.gols || 0,
+      assistencias: gaMap[a.id]?.assistencias || 0,
+      media,
+      qtdAvaliacoes: qtd,
+    };
+  });
+}
+
 // ----------------------------------------------------------------------------
 // Escalação — posição jogada em cada partida
 // ----------------------------------------------------------------------------

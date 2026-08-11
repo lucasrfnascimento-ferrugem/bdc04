@@ -1,5 +1,18 @@
-import { $, $$, escapeHtml, formatDate, fmt1 } from "../utils.js";
+import { $, $$, escapeHtml, formatDate, fmt1, toast } from "../utils.js";
 import { resumoGeral, rankingGolsAssistencias } from "../stats.js";
+
+function renderQr(containerId, texto){
+  const el = document.getElementById(containerId);
+  if (!el || typeof qrcode !== "function") return;
+  try{
+    const qr = qrcode(0, "M");
+    qr.addData(texto);
+    qr.make();
+    el.innerHTML = qr.createImgTag(4, 4);
+  }catch(err){
+    console.error("Erro ao gerar QR code:", err);
+  }
+}
 
 export function renderDashboard(root, state){
   const r = resumoGeral(state.jogos);
@@ -11,6 +24,7 @@ export function renderDashboard(root, state){
 
   const nomeAdv = id => escapeHtml(state.adversarios.find(a => a.id === id)?.nome || "?");
   const nomeCampo = id => escapeHtml(state.campos.find(c => c.id === id)?.nome || "?");
+  const appUrl = location.origin + location.pathname;
 
   root.innerHTML = `
     <div class="topbar">
@@ -28,6 +42,18 @@ export function renderDashboard(root, state){
       <div class="kpi-tile"><div class="kpi-label">Nota média jogadores</div><div class="kpi-value">${fmt1(r.mediaJogadores)}</div></div>
       <div class="kpi-tile"><div class="kpi-label">Nota média campo</div><div class="kpi-value">${fmt1(r.mediaCampo)}</div></div>
       <div class="kpi-tile"><div class="kpi-label">Nota média adversário</div><div class="kpi-value">${fmt1(r.mediaAdversario)}</div></div>
+    </div>
+
+    <div class="card card-pad share-card">
+      <div style="flex:1; min-width:220px;">
+        <div class="card-title">Acesso rápido ao app</div>
+        <div class="card-sub">Compartilhe o link ou escaneie o QR code para abrir em outro dispositivo.</div>
+        <div class="share-link-row">
+          <input id="app-link" class="share-link-input" type="text" readonly value="${escapeHtml(appUrl)}">
+          <button class="btn btn-primary btn-sm" id="btn-copy-link">Copiar link</button>
+        </div>
+      </div>
+      <div class="qr-box" id="qr-code"></div>
     </div>
 
     <div class="sumula-list">
@@ -64,4 +90,17 @@ export function renderDashboard(root, state){
   `;
 
   $$("[data-goto]", root).forEach(el => el.addEventListener("click", () => { location.hash = `#jogos/${el.dataset.goto}`; }));
+
+  $("#btn-copy-link", root)?.addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(appUrl);
+      toast("Link copiado!", "ok");
+    }catch(err){
+      const input = $("#app-link", root);
+      input?.select?.();
+      toast("Não foi possível copiar automaticamente. Selecione e copie manualmente.", "err");
+    }
+  });
+
+  renderQr("qr-code", appUrl);
 }
