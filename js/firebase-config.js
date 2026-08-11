@@ -23,5 +23,7 @@ export const firebaseConfig = {
 // Isso é só uma checagem de conveniência na tela; a segurança de verdade
 // vem das regras do Firestore (veja README.md).
 export const ALLOWED_EMAILS = [
-  // "lucas.rf.nascimento@gmail.com",
+  "lucas.rf.nascimento@gmail.com",
+  "diogohenrique1334@gmail.com",
+  "vitorsds6@gmail.com",
 ];
