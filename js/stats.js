@@ -1,5 +1,13 @@
 import { avg } from "./utils.js";
 
+// "Técnico" é uma categoria especial do campo Posição — usada pra cadastrar
+// comissão técnica (que pode ter direito a voto na Avaliação) sem que eles
+// apareçam nas listagens de jogadores (escalação, ranking, escalação ideal).
+export const POSICAO_TECNICO = "Técnico";
+export function ehJogador(atleta){
+  return !!atleta && atleta.posicao !== POSICAO_TECNICO;
+}
+
 // Jogos "realizados" são os que entram nas estatísticas (jogos agendados/futuros não contam).
 export function jogosRealizados(jogos){
   return jogos.filter(j => j.status === "realizado");
@@ -51,7 +59,7 @@ export function jogadoresDaPartida(jogo, atletas){
     ...normalizeEscalacao(jogo.escalacaoInicial).map(e => e.atletaId),
     ...normalizeEscalacao(jogo.escalacaoFinal).map(e => e.atletaId),
   ]);
-  return atletas.filter(a => ids.has(a.id));
+  return atletas.filter(a => ids.has(a.id) && ehJogador(a));
 }
 
 // Quantidade de partidas realizadas em que o atleta esteve escalado

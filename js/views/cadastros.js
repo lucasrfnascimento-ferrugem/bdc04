@@ -1,6 +1,6 @@
 import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1 } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, setPrivateDoc, getPrivateDoc } from "../db.js";
-import { mediaNotaAtleta, mediaCampo, mediaAdversario, contagemJogosPorCampo, contagemJogosPorAdversario } from "../stats.js";
+import { mediaNotaAtleta, mediaCampo, mediaAdversario, contagemJogosPorCampo, contagemJogosPorAdversario, POSICAO_TECNICO } from "../stats.js";
 
 // ============================================================================
 // Motor genérico de CRUD (usado por Atletas, Adversários e Campos)
@@ -181,7 +181,13 @@ function renderCrudView(root, opts, state){
 // Configurações específicas
 // ============================================================================
 
+// Posições de linha — usadas na escalação de partida (posição jogada em campo).
 export const POSICOES = ["Goleiro", "Zagueiro", "Lateral", "Volante", "Meia", "Atacante"];
+
+// Categorias do cadastro do atleta — inclui "Técnico" além das posições de
+// linha, pra cadastrar comissão técnica. "Técnico" não é uma posição jogada
+// em campo, por isso não entra nas opções de POSICOES (usada na escalação).
+export const CATEGORIAS_ATLETA = [...POSICOES, POSICAO_TECNICO];
 
 // Hub que agrupa Atletas/Adversários/Campos numa tela só — no mobile isso
 // substitui 3 ícones separados no menu inferior por 1 só (evita menu apertado).
@@ -229,7 +235,7 @@ export function renderAtletas(root, state){
     plural: "Atletas",
     fields: [
       { key: "nome", label: "Nome", type: "text", required: true, span2: true },
-      { key: "posicao", label: "Posição", type: "select", options: POSICOES, placeholder: "Selecione" },
+      { key: "posicao", label: "Posição / categoria", type: "select", options: CATEGORIAS_ATLETA, placeholder: "Selecione" },
       { key: "numero", label: "Número da camisa", type: "number", min: 0 },
       { key: "cpf", label: "CPF (opcional)", type: "text", placeholder: "000.000.000-00", private: true },
       { key: "dataNascimento", label: "Data de nascimento (opcional)", type: "date", private: true },

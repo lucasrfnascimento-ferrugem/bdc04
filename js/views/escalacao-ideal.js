@@ -1,5 +1,5 @@
 import { $, $$, escapeHtml, fmt1, toast } from "../utils.js";
-import { mediaNotaAtleta, notasPorPosicao, jogosRealizados } from "../stats.js";
+import { mediaNotaAtleta, notasPorPosicao, jogosRealizados, ehJogador } from "../stats.js";
 import { filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
 // Cada formação define as linhas do campo (do ataque para o goleiro) e, para
@@ -39,6 +39,13 @@ const FORMATIONS = {
     { label: "Goleiro", positions: ["Goleiro"], slots: 1 },
   ],
 };
+
+// Abreviações usadas no campo (mais legíveis no espaço apertado dos "dots" de jogador).
+const POSICAO_ABREV = {
+  "Goleiro": "GOL", "Zagueiro": "ZAG", "Lateral": "LAT",
+  "Volante": "VOL", "Meia": "MEI", "Atacante": "ATA",
+};
+const abrevPosicao = (pos) => POSICAO_ABREV[pos] || pos;
 
 let formacaoAtual = "4-3-3";
 let filtroAno = "";
@@ -110,7 +117,7 @@ export function renderEscalacaoIdeal(root, state){
   const anos = anosDisponiveis(realizados);
   const jogosFiltrados = filtrarPorPeriodo(realizados, { ano: filtroAno, mes: filtroMes });
 
-  const atletasElenco = state.atletas.filter(a => a.ativo !== false);
+  const atletasElenco = state.atletas.filter(a => a.ativo !== false && ehJogador(a));
   const atletasConsiderados = atletasElenco.filter(a => !excluidos.has(a.id));
 
   const notasPos = notasPorPosicao(atletasConsiderados, jogosFiltrados);
@@ -150,7 +157,7 @@ export function renderEscalacaoIdeal(root, state){
     const jogadoresHtml = titulares.map(t => `
       <div class="pitch-player">
         <div class="dot">${t.atleta.numero ?? "•"}</div>
-        <div class="nm">${escapeHtml(t.atleta.nome)} <span style="opacity:.65; font-weight:400;">(${escapeHtml(t.posicaoJogada)})</span></div>
+        <div class="nm">${escapeHtml(t.atleta.nome)} <span style="opacity:.65; font-weight:400;">(${escapeHtml(abrevPosicao(t.posicaoJogada))})</span></div>
         <div class="nota">${fmt1(t.media)}</div>
       </div>`).join("") + Array.from({ length: vagasAbertas }).map(() => `
       <div class="pitch-player">

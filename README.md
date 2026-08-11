@@ -160,8 +160,12 @@ js/views/*.js           uma view por tela (dashboard, jogos, cadastros, avaliaca
 - **`adversarios`**: `{ nome, cidade, observacoes }`
 - **`campos`**: `{ nome, endereco, tipo, observacoes }`
 - **`atletas`**: `{ nome, posicao, numero, ativo, podeVotar, observacoes }` (pública).
-  `podeVotar` marca diretores/capitão com direito a avaliar jogadores na
-  página Avaliação.
+  `podeVotar` marca diretores/capitão/técnicos com direito a avaliar jogadores
+  na página Avaliação. `posicao` aceita as posições de linha (Goleiro,
+  Zagueiro, Lateral, Volante, Meia, Atacante) ou `"Técnico"` — atletas
+  marcados como Técnico não entram nas listagens de jogadores (escalação de
+  partida, Ranking, Escalação ideal), mas continuam disponíveis para votar
+  na Avaliação se `podeVotar` estiver marcado.
 - **`atletas_privado`**: `{ cpf, dataNascimento }`, documento com o **mesmo id**
   do atleta correspondente — coleção não pública, só leitura/escrita para
   e-mails autorizados. Ambos os campos são opcionais.

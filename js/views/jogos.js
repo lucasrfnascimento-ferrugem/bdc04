@@ -1,7 +1,7 @@
 import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, formatDate, formatDateLong, todayISO, fmt1, ratingWidgetHtml, wireRatingWidgets } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, updateJogoField } from "../db.js";
 import { fieldHtml, collectFormData, POSICOES } from "./cadastros.js";
-import { resultadoJogo, normalizeEscalacao } from "../stats.js";
+import { resultadoJogo, normalizeEscalacao, ehJogador } from "../stats.js";
 
 let activeTab = "escalacao-inicial";
 let lastJogoId = null;
@@ -226,8 +226,9 @@ function renderEscalacaoPanel(jogo, atletas, field){
   const posicaoPorId = Object.fromEntries(escalacao.map(e => [e.atletaId, e.posicao]));
   const selecionados = new Set(escalacao.map(e => e.atletaId));
   // Mantém na lista qualquer atleta já escalado neste jogo, mesmo que hoje esteja marcado como inativo —
-  // assim uma partida antiga não perde jogadores que saíram do elenco depois.
-  const disponiveis = atletas.filter(a => a.ativo !== false || selecionados.has(a.id));
+  // assim uma partida antiga não perde jogadores que saíram do elenco depois. Técnicos não entram
+  // na escalação (não jogam em campo).
+  const disponiveis = atletas.filter(a => ehJogador(a) && (a.ativo !== false || selecionados.has(a.id)));
   if (disponiveis.length === 0){
     return `<div class="empty-state"><p>Cadastre atletas ativos para montar a escalação.</p></div>`;
   }
@@ -316,7 +317,7 @@ function renderGolsPanel(jogo, atletas){
       <button class="btn btn-ghost btn-sm" style="margin-left:auto;" data-remove-evt="${idx}">Remover</button>
     </div>`).join("");
 
-  const options = atletas.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join("");
+  const options = atletas.filter(ehJogador).map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join("");
 
   return `
     <div class="card card-pad">

@@ -1,5 +1,5 @@
 import { $, $$, escapeHtml, formatDate, fmt1 } from "../utils.js";
-import { statsPorAtleta } from "../stats.js";
+import { statsPorAtleta, ehJogador } from "../stats.js";
 
 let activeMetric = "ga"; // jogos | gols | assistencias | ga | nota
 let filtroAno = "";
@@ -64,7 +64,7 @@ export function renderRanking(root, state){
     });
   }
 
-  const stats = statsPorAtleta(state.atletas, jogosFiltrados);
+  const stats = statsPorAtleta(state.atletas.filter(ehJogador), jogosFiltrados);
   const listaFinal = ordenarPorMetrica(filtrarPorMetrica(stats, activeMetric), activeMetric);
 
   const rows = listaFinal.map((s, i) => `

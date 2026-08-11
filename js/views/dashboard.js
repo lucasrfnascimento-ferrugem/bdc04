@@ -1,5 +1,5 @@
 import { $, $$, escapeHtml, formatDate, fmt1, toast } from "../utils.js";
-import { resumoGeral, rankingGolsAssistencias, mediaNotaJogadoresNoJogo, resultadoJogo, jogosRealizados, saldoGols } from "../stats.js";
+import { resumoGeral, rankingGolsAssistencias, mediaNotaJogadoresNoJogo, resultadoJogo, jogosRealizados, saldoGols, ehJogador } from "../stats.js";
 import { getFiltroPeriodo, setFiltroPeriodo, filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
 function renderQr(containerId, texto){
@@ -32,7 +32,7 @@ export function renderDashboard(root, state){
   const r = resumoGeral(realizadosFiltrados);
   const saldo = saldoGols(realizadosFiltrados);
   const pctAssistencia = r.qtdGols > 0 ? Math.round((r.qtdAssistencias / r.qtdGols) * 100) : 0;
-  const top3GA = rankingGolsAssistencias(state.atletas, realizadosFiltrados).slice(0, 3);
+  const top3GA = rankingGolsAssistencias(state.atletas.filter(ehJogador), realizadosFiltrados).slice(0, 3);
   const ultimos5 = [...realizadosFiltrados].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 5);
   const top3Partidas = realizadosFiltrados
     .map(j => ({ jogo: j, ...mediaNotaJogadoresNoJogo(j) }))
