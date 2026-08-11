@@ -1,16 +1,18 @@
-import { $, $$, escapeHtml, formatDate, formatDateLong, openModal, closeModal, fmt1 } from "../utils.js";
-import { resultadoJogo, mediaNotaAtleta, normalizeEscalacao } from "../stats.js";
+import { $, $$, escapeHtml, formatDate, formatDateLong, openModal, closeModal, fmt1, avg } from "../utils.js";
+import { resultadoJogo, normalizeEscalacao, notasDoAtletaNoJogo, jogosRealizados } from "../stats.js";
+import { getFiltroPeriodo, setFiltroPeriodo, filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
 const RESULTADO_BADGE = {
   vitoria: `<span class="badge badge-ok">Vitória</span>`,
   empate: `<span class="badge badge-pending">Empate</span>`,
-  derrota: `<span class="badge" style="background:var(--danger-bg); color:var(--danger);">Derrota</span>`,
+  derrota: `<span class="badge badge-danger">Derrota</span>`,
 };
 
 export function renderHistorico(root, state){
-  const realizados = state.jogos
-    .filter(j => j.status === "realizado")
-    .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const filtro = getFiltroPeriodo();
+  const todosRealizados = [...jogosRealizados(state.jogos)].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const anos = anosDisponiveis(todosRealizados);
+  const realizados = filtrarPorPeriodo(todosRealizados, filtro);
 
   const nomeAdv = id => state.adversarios.find(a => a.id === id)?.nome || "?";
   const nomeCampo = id => state.campos.find(c => c.id === id)?.nome || "?";
@@ -31,10 +33,31 @@ export function renderHistorico(root, state){
     <div class="topbar">
       <div><div class="eyebrow">Visão geral</div><h1>Histórico</h1></div>
     </div>
+
+    <div class="form-grid" style="margin-bottom:20px; max-width:460px;">
+      <div class="field">
+        <label>Ano</label>
+        <select id="filtro-ano">
+          <option value="">Todos</option>
+          ${anos.map(a => `<option value="${a}" ${a === filtro.ano ? "selected" : ""}>${a}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field">
+        <label>Mês</label>
+        <select id="filtro-mes">
+          <option value="">Todos</option>
+          ${MESES.map((m, idx) => {
+            const val = String(idx + 1).padStart(2, "0");
+            return `<option value="${val}" ${val === filtro.mes ? "selected" : ""}>${m}</option>`;
+          }).join("")}
+        </select>
+      </div>
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead><tr><th>Data</th><th>Adversário</th><th>Campo</th><th>Placar</th><th>Resultado</th></tr></thead>
-        <tbody>${rows || `<tr class="empty-row"><td colspan="5">Nenhuma partida realizada ainda.</td></tr>`}</tbody>
+        <tbody>${rows || `<tr class="empty-row"><td colspan="5">Nenhuma partida realizada para o período selecionado.</td></tr>`}</tbody>
       </table>
     </div>
   `;
@@ -45,6 +68,9 @@ export function renderHistorico(root, state){
       openSumulaModal(jogo, state);
     });
   });
+
+  $("#filtro-ano", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ ano: e.target.value }); renderHistorico(root, state); });
+  $("#filtro-mes", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ mes: e.target.value }); renderHistorico(root, state); });
 }
 
 function openSumulaModal(jogo, state){
@@ -71,10 +97,18 @@ function openSumulaModal(jogo, state){
       </div>`).join("");
   };
 
-  const notasHtml = Object.keys(jogo.avaliacoesJogadores || {}).length === 0
+  const notasAtletas = Object.keys(jogo.avaliacoesJogadores || {})
+    .map(id => {
+      const notas = notasDoAtletaNoJogo(jogo, id);
+      return { id, media: avg(notas), qtd: notas.length };
+    })
+    .filter(x => x.media !== null)
+    .sort((a, b) => b.media - a.media);
+
+  const notasHtml = notasAtletas.length === 0
     ? `<p style="color:var(--ink-faint); font-size:13px;">Sem avaliações registradas.</p>`
-    : Object.entries(jogo.avaliacoesJogadores).sort((a, b) => (b[1].nota || 0) - (a[1].nota || 0)).map(([id, v]) => `
-        <div class="event-row"><span>${nome(id)}</span><span class="pill-num" style="margin-left:auto;">${fmt1(v.nota)}</span></div>`).join("");
+    : notasAtletas.map(x => `
+        <div class="event-row"><span>${nome(x.id)}</span><span class="pill-num" style="margin-left:auto;">${fmt1(x.media)} <span style="color:var(--ink-faint); font-weight:400;">(${x.qtd})</span></span></div>`).join("");
 
   openModal(`
     <div class="modal-head">
@@ -103,7 +137,7 @@ function openSumulaModal(jogo, state){
         </div>
       </div>
 
-      <h4 style="font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin:20px 0 8px;">Notas dos jogadores</h4>
+      <h4 style="font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin:20px 0 8px;">Nota média dos jogadores</h4>
       ${notasHtml}
     </div>
   `, { wide: true });

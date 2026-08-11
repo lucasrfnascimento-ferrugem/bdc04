@@ -45,6 +45,15 @@ export function rankingGolsAssistencias(atletas, jogos){
     .sort((a, b) => (b.gols + b.assistencias) - (a.gols + a.assistencias) || b.gols - a.gols);
 }
 
+// Atletas que estiveram escalados numa partida (inicial ou final), sem duplicar.
+export function jogadoresDaPartida(jogo, atletas){
+  const ids = new Set([
+    ...normalizeEscalacao(jogo.escalacaoInicial).map(e => e.atletaId),
+    ...normalizeEscalacao(jogo.escalacaoFinal).map(e => e.atletaId),
+  ]);
+  return atletas.filter(a => ids.has(a.id));
+}
+
 // Quantidade de partidas realizadas em que o atleta esteve escalado
 // (na inicial ou na final), independente de ter marcado gol/assistência.
 export function contagemJogosPorAtleta(jogos){
@@ -99,12 +108,42 @@ export function posicaoJogadaNoJogo(jogo, atletaId){
 }
 
 // ----------------------------------------------------------------------------
-// Avaliações
+// Avaliações — suportam múltiplos votantes por partida (diretores/capitão).
+// Formato em jogo.avaliacoesJogadores: { [atletaId]: { [votanteId]: { nota, obs } } }.
+// Partidas antigas (de antes desse recurso) guardam { [atletaId]: { nota, obs } }
+// direto, sem identificar quem votou — esse formato "achatado" continua sendo
+// lido normalmente, só sem separar por votante.
 // ----------------------------------------------------------------------------
+
+// Todas as notas atribuídas a um atleta numa partida (de todos os votantes).
+export function notasDoAtletaNoJogo(jogo, atletaId){
+  const entry = jogo?.avaliacoesJogadores?.[atletaId];
+  if (!entry) return [];
+  if (typeof entry.nota === "number") return [entry.nota]; // formato antigo (nota única)
+  return Object.values(entry).map(v => v?.nota).filter(n => typeof n === "number");
+}
+
+// Nota que um votante específico deu a um atleta numa partida (ou null, se ele
+// ainda não votou ou se a partida só tem o formato antigo sem votante identificado).
+export function notaDoVotanteNoJogo(jogo, atletaId, votanteId){
+  const entry = jogo?.avaliacoesJogadores?.[atletaId];
+  if (!entry || typeof entry.nota === "number") return null;
+  return typeof entry[votanteId]?.nota === "number" ? entry[votanteId].nota : null;
+}
+
+// Nota média de todos os jogadores avaliados numa partida específica — usada
+// para o ranking "melhores partidas" do Dashboard.
+export function mediaNotaJogadoresNoJogo(jogo){
+  const todas = [];
+  Object.keys(jogo?.avaliacoesJogadores || {}).forEach(atletaId => {
+    todas.push(...notasDoAtletaNoJogo(jogo, atletaId));
+  });
+  return { media: avg(todas), qtd: todas.length };
+}
+
 export function mediaNotaAtleta(atletaId, jogos){
-  const notas = jogosRealizados(jogos)
-    .map(j => j.avaliacoesJogadores?.[atletaId]?.nota)
-    .filter(n => typeof n === "number");
+  const notas = [];
+  jogosRealizados(jogos).forEach(j => notas.push(...notasDoAtletaNoJogo(j, atletaId)));
   return { media: avg(notas), qtd: notas.length };
 }
 
@@ -116,14 +155,15 @@ export function mediaNotaAtleta(atletaId, jogos){
 export function notasPorPosicao(atletas, jogos){
   const map = {}; // atletaId -> { posicao -> notas[] }
   jogosRealizados(jogos).forEach(j => {
-    Object.entries(j.avaliacoesJogadores || {}).forEach(([atletaId, v]) => {
-      if (typeof v?.nota !== "number") return;
+    Object.keys(j.avaliacoesJogadores || {}).forEach(atletaId => {
+      const notas = notasDoAtletaNoJogo(j, atletaId);
+      if (notas.length === 0) return;
       const atleta = atletas.find(a => a.id === atletaId);
       const posicao = posicaoJogadaNoJogo(j, atletaId) || atleta?.posicao || null;
       if (!posicao) return;
       if (!map[atletaId]) map[atletaId] = {};
       if (!map[atletaId][posicao]) map[atletaId][posicao] = [];
-      map[atletaId][posicao].push(v.nota);
+      map[atletaId][posicao].push(...notas);
     });
   });
   const result = {};
@@ -139,8 +179,8 @@ export function notasPorPosicao(atletas, jogos){
 export function mediaGeralJogadores(jogos){
   const todasNotas = [];
   jogosRealizados(jogos).forEach(j => {
-    Object.values(j.avaliacoesJogadores || {}).forEach(v => {
-      if (typeof v?.nota === "number") todasNotas.push(v.nota);
+    Object.keys(j.avaliacoesJogadores || {}).forEach(atletaId => {
+      todasNotas.push(...notasDoAtletaNoJogo(j, atletaId));
     });
   });
   return avg(todasNotas);

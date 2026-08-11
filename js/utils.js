@@ -75,3 +75,27 @@ export function closeModal(){
 export function confirmAction(msg){
   return window.confirm(msg);
 }
+
+// ----------------------------------------------------------------------------
+// Widget de nota (1 a 10) — usado nas telas de avaliação (jogo e avaliação de jogadores)
+// ----------------------------------------------------------------------------
+export function ratingWidgetHtml(name, value){
+  let btns = "";
+  for (let i = 1; i <= 10; i++){
+    btns += `<button type="button" class="rating-btn" data-val="${i}">${i}</button>`;
+  }
+  return `<div class="rating-input" data-name="${name}"><input type="hidden" data-rating="${name}" value="${value ?? ""}">${btns}</div>`;
+}
+
+export function wireRatingWidgets(root){
+  $$(".rating-input", root).forEach(wrap => {
+    const hidden = wrap.querySelector("input[type=hidden]");
+    $$(".rating-btn", wrap).forEach(btn => {
+      if (btn.dataset.val === String(hidden.value)) btn.classList.add("active");
+      btn.addEventListener("click", () => {
+        hidden.value = btn.dataset.val;
+        $$(".rating-btn", wrap).forEach(b => b.classList.toggle("active", b === btn));
+      });
+    });
+  });
+}

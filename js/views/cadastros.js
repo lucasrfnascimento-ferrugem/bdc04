@@ -2,9 +2,9 @@ import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1 } 
 import { createDoc, saveDoc, removeDoc, setPrivateDoc, getPrivateDoc } from "../db.js";
 import { mediaNotaAtleta, mediaCampo, mediaAdversario, contagemJogosPorCampo, contagemJogosPorAdversario } from "../stats.js";
 
-// ===========================================================================
+// ============================================================================
 // Motor genérico de CRUD (usado por Atletas, Adversários e Campos)
-// ===========================================================================
+// ============================================================================
 
 export function fieldHtml(f, item){
   const val = item ? item[f.key] : (f.default ?? "");
@@ -165,16 +165,21 @@ function renderCrudView(root, opts, state){
         const priv = await getPrivateDoc(opts.privateCollectionName, item.id);
         openCrudForm(opts, { ...item, ...priv });
       }catch(err){
+        // Mesmo se a leitura dos dados privados (CPF/nascimento) falhar — por
+        // exemplo, se as regras do Firestore ainda não tiverem sido publicadas
+        // no console —, abre o formulário com os dados públicos mesmo assim,
+        // em vez de travar sem abrir nada.
         console.error(err);
-        toast("Erro ao carregar dados: " + err.message, "err");
+        toast("Não foi possível carregar CPF/nascimento (dado protegido). Abrindo com os demais dados.", "err");
+        openCrudForm(opts, item);
       }
     });
   });
 }
 
-// ===========================================================================
+// ============================================================================
 // Configurações específicas
-// ===========================================================================
+// ============================================================================
 
 export const POSICOES = ["Goleiro", "Zagueiro", "Lateral", "Volante", "Meia", "Atacante"];
 
@@ -191,6 +196,7 @@ export function renderAtletas(root, state){
       { key: "cpf", label: "CPF (opcional)", type: "text", placeholder: "000.000.000-00", private: true },
       { key: "dataNascimento", label: "Data de nascimento (opcional)", type: "date", private: true },
       { key: "ativo", label: "Atleta ativo no elenco", type: "checkbox", default: true },
+      { key: "podeVotar", label: "Direito a voto (diretor/capitão)", type: "checkbox", default: false },
       { key: "observacoes", label: "Observações", type: "textarea", span2: true },
     ],
     columns: [
@@ -200,6 +206,9 @@ export function renderAtletas(root, state){
       { label: "Status", render: a => a.ativo === false
         ? `<span class="badge badge-off">Inativo</span>`
         : `<span class="badge badge-ok">Ativo</span>` },
+      { label: "Votante", render: a => a.podeVotar
+        ? `<span class="badge badge-pending">Vota</span>`
+        : `<span style="color:var(--ink-faint);">—</span>` },
       { label: "Nota média", render: (a, state) => {
         const { media, qtd } = mediaNotaAtleta(a.id, state.jogos);
         return media === null ? "—" : `${fmt1(media)} <span style="color:var(--ink-faint); font-size:11px;">(${qtd})</span>`;

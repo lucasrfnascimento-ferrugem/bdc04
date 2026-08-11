@@ -8,6 +8,7 @@ import { renderEscalacaoIdeal } from "./views/escalacao-ideal.js";
 import { renderHistorico } from "./views/historico.js";
 import { renderJogosList, renderJogoDetail } from "./views/jogos.js";
 import { renderAtletas, renderAdversarios, renderCampos } from "./views/cadastros.js";
+import { renderAvaliacao } from "./views/avaliacao.js";
 
 const state = {
   adversarios: [], campos: [], atletas: [], jogos: [],
@@ -34,9 +35,9 @@ function startListeners(){
 }
 startListeners();
 
-// ===========================================================================
+// ============================================================================
 // Router
-// ===========================================================================
+// ============================================================================
 
 const ROUTES = {
   dashboard: renderDashboard,
@@ -46,9 +47,10 @@ const ROUTES = {
   atletas: renderAtletas,
   adversarios: renderAdversarios,
   campos: renderCampos,
+  avaliacao: renderAvaliacao,
 };
 
-const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos"]);
+const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao"]);
 
 function parseHash(){
   const raw = (location.hash || "#dashboard").slice(1);
@@ -103,7 +105,7 @@ $$(".nav-link[data-route]").forEach(btn => {
   btn.addEventListener("click", () => { location.hash = `#${btn.dataset.route}`; });
 });
 
-// ===========================================================================
+// ============================================================================
 // Autenticação — login/logout não bloqueiam mais o app inteiro; só liberam
 // as páginas de jogos/atletas/adversários/campos.
 // ============================================================================

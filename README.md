@@ -136,19 +136,22 @@ js/firebase-config.js   chaves do seu projeto Firebase + e-mails autorizados
 js/auth.js              login com Google / logout
 js/db.js                funções genéricas de leitura/escrita no Firestore
 js/stats.js             cálculos: médias, ranking, contagens
-js/utils.js             helpers de UI (modal, toast, formatação)
+js/filters.js           filtro de período (ano/mês) compartilhado entre Dashboard e Histórico
+js/utils.js             helpers de UI (modal, toast, formatação, widget de nota)
 js/app.js               roteamento (por #hash), controle de acesso e ligação entre views e dados
-js/views/*.js           uma view por tela (dashboard, jogos, cadastros...)
+js/views/*.js           uma view por tela (dashboard, jogos, cadastros, avaliacao...)
 ```
 
 ## Navegação pública x protegida
 
 - **Públicas (sem login):** Dashboard, Ranking, Escalação ideal e Histórico.
-  Qualquer pessoa com o link consegue abrir e ver os dados.
+  Qualquer pessoa com o link consegue abrir e ver os dados. Dashboard e
+  Histórico têm filtros de Ano/Mês sincronizados entre si (mudar o período
+  numa tela mantém a seleção ao navegar para a outra).
 - **Protegidas (exige login com e-mail autorizado):** Jogos, Atletas,
-  Adversários e Campos. Sem login, esses links somem do menu e, se alguém
-  tentar acessar direto pela URL (`#jogos`, `#atletas`...), o app mostra uma
-  tela de "Acesso restrito" com um botão para entrar com Google.
+  Adversários, Campos e Avaliação. Sem login, esses links somem do menu e, se
+  alguém tentar acessar direto pela URL (`#jogos`, `#atletas`, `#avaliacao`...),
+  o app mostra uma tela de "Acesso restrito" com um botão para entrar com Google.
 - No celular, o menu vira uma barra fixa de ícones no rodapé; no desktop
   continua como uma barra lateral.
 
@@ -156,7 +159,9 @@ js/views/*.js           uma view por tela (dashboard, jogos, cadastros...)
 
 - **`adversarios`**: `{ nome, cidade, observacoes }`
 - **`campos`**: `{ nome, endereco, tipo, observacoes }`
-- **`atletas`**: `{ nome, posicao, numero, ativo, observacoes }` (pública)
+- **`atletas`**: `{ nome, posicao, numero, ativo, podeVotar, observacoes }` (pública).
+  `podeVotar` marca diretores/capitão com direito a avaliar jogadores na
+  página Avaliação.
 - **`atletas_privado`**: `{ cpf, dataNascimento }`, documento com o **mesmo id**
   do atleta correspondente — coleção não pública, só leitura/escrita para
   e-mails autorizados. Ambos os campos são opcionais.
@@ -164,7 +169,7 @@ js/views/*.js           uma view por tela (dashboard, jogos, cadastros...)
   `{ data, status, adversarioId, campoId, placarNos, placarAdversario,
   escalacaoInicial: [{ atletaId, posicao }...], escalacaoFinal: [{ atletaId, posicao }...],
   golsAssistencias: [{ atletaGolId, atletaAssistId, minuto }],
-  avaliacoesJogadores: { [atletaId]: { nota, obs } },
+  avaliacoesJogadores: { [atletaId]: { [votanteId]: { nota, obs } } },
   avaliacaoCampo: { nota, obs }, avaliacaoAdversario: { nota, obs },
   observacoes }`
 
@@ -175,17 +180,28 @@ js/views/*.js           uma view por tela (dashboard, jogos, cadastros...)
   existir têm esses campos como array simples de ids (sem posição); o app
   continua lendo esse formato antigo normalmente, só sem separar por posição.
 
+  `avaliacoesJogadores` guarda uma nota por **votante** (diretor/capitão),
+  para permitir várias avaliações por jogador na mesma partida — a nota
+  exibida no app é sempre a média de todos os votos. Partidas antigas, de
+  antes desse recurso, guardam `{ [atletaId]: { nota, obs } }` direto (um
+  valor só, sem identificar quem votou); o app continua lendo esse formato
+  normalmente e soma essa nota antiga como mais um voto na média.
+
 Tudo relacionado a uma partida fica dentro do próprio documento do jogo —
 mais simples de consultar e de fazer backup/export manual pelo console do
 Firebase, se precisar um dia.
 
 ## Como usar
 
-1. Cadastre primeiro **Adversários**, **Campos** e **Atletas**.
+1. Cadastre primeiro **Adversários**, **Campos** e **Atletas** (marcando
+   `podeVotar` para diretores/capitão).
 2. Crie um **Jogo** (pode ser antes ou depois de acontecer — use o status
    *Agendado*/*Realizado*).
 3. Dentro do jogo: defina a **escalação inicial**, depois a **final**,
-   registre os **gols e assistências** e, após a partida, as **avaliações**
-   (jogadores, campo, adversário).
-4. As telas **Dashboard**, **Ranking**, **Escalação ideal** e **Histórico**
+   registre os **gols e assistências** e, após a partida, a **avaliação do
+   campo e do adversário** (aba "Campo & adversário").
+4. Na página **Avaliação**, cada votante autorizado escolhe seu nome e a
+   partida, e dá nota de 1 a 10 para cada jogador que entrou em campo. A nota
+   final de cada jogador é a média de todos os votos recebidos.
+5. As telas **Dashboard**, **Ranking**, **Escalação ideal** e **Histórico**
    são todas calculadas automaticamente a partir desses cadastros.

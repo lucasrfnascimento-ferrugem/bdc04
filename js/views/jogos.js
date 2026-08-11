@@ -1,7 +1,7 @@
-import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, formatDate, formatDateLong, todayISO, fmt1 } from "../utils.js";
+import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, formatDate, formatDateLong, todayISO, fmt1, ratingWidgetHtml, wireRatingWidgets } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, updateJogoField } from "../db.js";
 import { fieldHtml, collectFormData, POSICOES } from "./cadastros.js";
-import { resultadoJogo, normalizeEscalacao, posicaoJogadaNoJogo } from "../stats.js";
+import { resultadoJogo, normalizeEscalacao } from "../stats.js";
 
 let activeTab = "escalacao-inicial";
 let lastJogoId = null;
@@ -144,35 +144,6 @@ export function renderJogosList(root, state){
 // Detalhe do jogo
 // ============================================================================
 
-function ratingWidgetHtml(name, value){
-  let btns = "";
-  for (let i = 1; i <= 10; i++){
-    btns += `<button type="button" class="rating-btn" data-val="${i}">${i}</button>`;
-  }
-  return `<div class="rating-input" data-name="${name}"><input type="hidden" data-rating="${name}" value="${value ?? ""}">${btns}</div>`;
-}
-
-function wireRatingWidgets(root){
-  $$(".rating-input", root).forEach(wrap => {
-    const hidden = wrap.querySelector("input[type=hidden]");
-    $$(".rating-btn", wrap).forEach(btn => {
-      if (btn.dataset.val === String(hidden.value)) btn.classList.add("active");
-      btn.addEventListener("click", () => {
-        hidden.value = btn.dataset.val;
-        $$(".rating-btn", wrap).forEach(b => b.classList.toggle("active", b === btn));
-      });
-    });
-  });
-}
-
-function jogadoresDaPartida(jogo, atletas){
-  const ids = new Set([
-    ...normalizeEscalacao(jogo.escalacaoInicial).map(e => e.atletaId),
-    ...normalizeEscalacao(jogo.escalacaoFinal).map(e => e.atletaId),
-  ]);
-  return atletas.filter(a => ids.has(a.id));
-}
-
 export function renderJogoDetail(root, state, jogoId){
   if (jogoId !== lastJogoId){ activeTab = "escalacao-inicial"; lastJogoId = jogoId; }
 
@@ -212,7 +183,7 @@ export function renderJogoDetail(root, state, jogoId){
       <button class="tab-btn" data-tab="escalacao-inicial">Escalação inicial</button>
       <button class="tab-btn" data-tab="escalacao-final">Escalação final</button>
       <button class="tab-btn" data-tab="gols">Gols &amp; assistências</button>
-      <button class="tab-btn" data-tab="avaliacoes">Avaliações</button>
+      <button class="tab-btn" data-tab="avaliacoes">Campo &amp; adversário</button>
     </div>
 
     <div class="tab-panel" data-panel="escalacao-inicial">
@@ -225,7 +196,7 @@ export function renderJogoDetail(root, state, jogoId){
       ${renderGolsPanel(jogo, state.atletas)}
     </div>
     <div class="tab-panel" data-panel="avaliacoes">
-      ${renderAvaliacoesPanel(jogo, jogadoresDaPartida(jogo, state.atletas))}
+      ${renderAvaliacoesPanel(jogo)}
     </div>
   `;
 
@@ -243,7 +214,7 @@ export function renderJogoDetail(root, state, jogoId){
   wireEscalacaoPanel(root, jogo, "escalacaoInicial", "[data-panel='escalacao-inicial']");
   wireEscalacaoPanel(root, jogo, "escalacaoFinal", "[data-panel='escalacao-final']");
   wireGolsPanel(root, jogo, state.atletas);
-  wireAvaliacoesPanel(root, jogo, jogadoresDaPartida(jogo, state.atletas));
+  wireAvaliacoesPanel(root, jogo);
 }
 
 // ----------------------------------------------------------------------------
@@ -393,30 +364,18 @@ function wireGolsPanel(root, jogo, atletas){
 }
 
 // ----------------------------------------------------------------------------
-// Avaliações (jogadores, campo, adversário)
+// Avaliações (campo, adversário) — a avaliação dos jogadores agora fica numa
+// página isolada (Avaliação), porque suporta vários votantes por partida.
 // ----------------------------------------------------------------------------
 
-function renderAvaliacoesPanel(jogo, jogadores){
-  const avJog = jogo.avaliacoesJogadores || {};
-  const jogadoresHtml = jogadores.length === 0
-    ? `<p style="color:var(--ink-faint); font-size:13px;">Defina a escalação para poder avaliar os jogadores.</p>`
-    : jogadores.map(a => {
-      const posicaoJogada = posicaoJogadaNoJogo(jogo, a.id) || a.posicao || "—";
-      return `
-      <div style="display:flex; align-items:center; gap:14px; padding:10px 0; border-bottom:1px solid var(--line);">
-        <span style="flex:0 0 180px; font-weight:600; font-size:13.5px;">${escapeHtml(a.nome)}
-          <span style="display:block; font-weight:400; font-size:11px; color:var(--ink-faint);">${escapeHtml(posicaoJogada)}</span>
-        </span>
-        ${ratingWidgetHtml(`jog-${a.id}`, avJog[a.id]?.nota)}
-      </div>`;
-    }).join("");
-
+function renderAvaliacoesPanel(jogo){
   return `
-    <div class="card card-pad" style="margin-bottom:16px;">
-      <div class="card-title">Avaliação dos jogadores</div>
-      <div class="card-sub">Nota de 1 a 10 para cada atleta que entrou em campo.</div>
-      ${jogadoresHtml}
-      ${jogadores.length ? `<div class="form-actions"><button class="btn btn-primary" id="btn-save-avjog">Salvar avaliações de jogadores</button></div>` : ""}
+    <div class="card card-pad" style="margin-bottom:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:200px;">
+        <div class="card-title">Avaliação dos jogadores</div>
+        <div class="card-sub" style="margin-bottom:0;">Diretores e capitão avaliam os jogadores escalados nesta partida numa página própria, com voto individual de cada um.</div>
+      </div>
+      <a href="#avaliacao" class="btn btn-gold btn-sm">Avaliar jogadores →</a>
     </div>
 
     <div class="card card-pad" style="margin-bottom:16px;">
@@ -437,25 +396,10 @@ function renderAvaliacoesPanel(jogo, jogadores){
   `;
 }
 
-function wireAvaliacoesPanel(root, jogo, jogadores){
+function wireAvaliacoesPanel(root, jogo){
   const panel = $("[data-panel='avaliacoes']", root);
   if (!panel) return;
   wireRatingWidgets(panel);
-
-  $("#btn-save-avjog", panel)?.addEventListener("click", async (e) => {
-    const map = { ...(jogo.avaliacoesJogadores || {}) };
-    jogadores.forEach(a => {
-      const hidden = $(`input[data-rating="jog-${a.id}"]`, panel);
-      const val = hidden?.value ? Number(hidden.value) : null;
-      if (val) map[a.id] = { nota: val };
-    });
-    e.target.disabled = true;
-    try{
-      await updateJogoField(jogo.id, { avaliacoesJogadores: map });
-      toast("Avaliações de jogadores salvas.", "ok");
-    }catch(err){ toast("Erro: " + err.message, "err"); }
-    e.target.disabled = false;
-  });
 
   $("#btn-save-campo", panel)?.addEventListener("click", async (e) => {
     const hidden = $(`input[data-rating="campo"]`, panel);
