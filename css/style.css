@@ -30,6 +30,8 @@
 
 *,*::before,*::after{box-sizing:border-box;}
 html,body{height:100%;}
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+html,body{overflow-x:hidden; max-width:100%;}
 body{
   margin:0;
   font-family:var(--font-body);
@@ -46,7 +48,7 @@ button{font-family:var(--font-body); cursor:pointer;}
 /* ==========================================================================
    App shell
    ========================================================================== */
-#app-shell{display:flex; min-height:100vh;}
+#app-shell{display:flex; min-height:100vh; min-height:100dvh;}
 
 .sidebar{
   width:236px; flex-shrink:0;
@@ -376,9 +378,9 @@ tbody tr.clickable{cursor:pointer;}
   .sidebar{
     width:100%; height:auto; position:fixed; left:0; right:0; bottom:0; top:auto;
     flex-direction:row; align-items:stretch; justify-content:space-around;
-    padding:6px 4px; overflow-x:auto;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); overflow-x:auto;
     box-shadow:0 -2px 14px rgba(0,0,0,.25);
-    z-index:40;
+    z-index:40; transform:translateZ(0);
   }
   .nav-group-label{display:none;}
   .nav-link{
@@ -387,7 +389,7 @@ tbody tr.clickable{cursor:pointer;}
     text-align:center; white-space:nowrap;
   }
   .nav-link svg{width:19px; height:19px;}
-  main#view-root{margin-left:0; padding:70px 16px 84px;}
+  main#view-root{margin-left:0; padding:70px 16px calc(84px + env(safe-area-inset-bottom, 0px));}
   .sumula{grid-template-columns:1fr auto 1fr;}
   .sumula-side .score{font-size:34px;}
 }

@@ -7,7 +7,7 @@ import { renderRanking } from "./views/ranking.js";
 import { renderEscalacaoIdeal } from "./views/escalacao-ideal.js";
 import { renderHistorico } from "./views/historico.js";
 import { renderJogosList, renderJogoDetail } from "./views/jogos.js";
-import { renderAtletas, renderAdversarios, renderCampos } from "./views/cadastros.js";
+import { renderAtletas, renderAdversarios, renderCampos, renderCadastrosHub } from "./views/cadastros.js";
 import { renderAvaliacao } from "./views/avaliacao.js";
 
 const state = {
@@ -48,9 +48,10 @@ const ROUTES = {
   adversarios: renderAdversarios,
   campos: renderCampos,
   avaliacao: renderAvaliacao,
+  cadastros: renderCadastrosHub,
 };
 
-const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao"]);
+const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao", "cadastros"]);
 
 function parseHash(){
   const raw = (location.hash || "#dashboard").slice(1);
@@ -80,7 +81,12 @@ function render(){
   }
   const { route, subId } = parseHash();
 
-  $$(".nav-link[data-route]").forEach(a => a.classList.toggle("active", a.dataset.route === route));
+  // "Cadastros" agrupa Atletas/Adversários/Campos num hub só — o botão do
+  // menu continua marcado como ativo quando o usuário está em qualquer uma
+  // dessas subtelas, não só na tela do hub em si.
+  const CADASTROS_SUBROTAS = new Set(["atletas", "adversarios", "campos"]);
+  const routeAtiva = CADASTROS_SUBROTAS.has(route) ? "cadastros" : route;
+  $$(".nav-link[data-route]").forEach(a => a.classList.toggle("active", a.dataset.route === routeAtiva));
 
   const root = $("#view-root");
 

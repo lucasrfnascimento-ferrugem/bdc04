@@ -183,6 +183,44 @@ function renderCrudView(root, opts, state){
 
 export const POSICOES = ["Goleiro", "Zagueiro", "Lateral", "Volante", "Meia", "Atacante"];
 
+// Hub que agrupa Atletas/Adversários/Campos numa tela só — no mobile isso
+// substitui 3 ícones separados no menu inferior por 1 só (evita menu apertado).
+export function renderCadastrosHub(root, state){
+  const itens = [
+    {
+      route: "atletas", label: "Atletas", desc: `${state.atletas.length} cadastrado(s)`,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg>`,
+    },
+    {
+      route: "adversarios", label: "Adversários", desc: `${state.adversarios.length} cadastrado(s)`,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V4l8 4 8-4v17"/><path d="M4 21h16"/></svg>`,
+    },
+    {
+      route: "campos", label: "Campos", desc: `${state.campos.length} cadastrado(s)`,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="1"/><circle cx="12" cy="12" r="2.4"/><path d="M12 6v12M3 9h3v6H3M18 9h3v6h-3"/></svg>`,
+    },
+  ];
+
+  root.innerHTML = `
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">Gestão</div>
+        <h1>Cadastros</h1>
+      </div>
+    </div>
+    <div class="dashboard-grid-3">
+      ${itens.map(it => `
+        <a href="#${it.route}" class="card card-pad" style="display:flex; align-items:center; gap:14px; text-decoration:none;">
+          <div style="width:44px; height:44px; border-radius:50%; background:var(--pitch-light); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--pitch);">${it.icon}</div>
+          <div style="min-width:0;">
+            <div class="card-title" style="margin-bottom:2px;">${it.label}</div>
+            <div class="card-sub" style="margin-bottom:0;">${it.desc}</div>
+          </div>
+        </a>`).join("")}
+    </div>
+  `;
+}
+
 export function renderAtletas(root, state){
   renderCrudView(root, {
     collectionName: "atletas",

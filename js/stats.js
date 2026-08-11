@@ -225,6 +225,16 @@ export function contagemJogosPorAdversario(jogos){
   return map;
 }
 
+// Saldo de gols do time (gols feitos - gols tomados), com base no placar de
+// cada partida realizada — não na contagem de eventos de gol registrados,
+// para refletir o placar oficial mesmo que algum gol não tenha sido detalhado.
+export function saldoGols(jogos){
+  const realizados = jogosRealizados(jogos);
+  const feitos = realizados.reduce((s, j) => s + (j.placarNos ?? 0), 0);
+  const sofridos = realizados.reduce((s, j) => s + (j.placarAdversario ?? 0), 0);
+  return { feitos, sofridos, saldo: feitos - sofridos };
+}
+
 export function resultadoJogo(jogo){
   if (jogo.placarNos === null || jogo.placarNos === undefined || jogo.placarAdversario === null || jogo.placarAdversario === undefined){
     return null;

@@ -1,5 +1,5 @@
 import { $, $$, escapeHtml, formatDate, fmt1, toast } from "../utils.js";
-import { resumoGeral, rankingGolsAssistencias, mediaNotaJogadoresNoJogo, resultadoJogo, jogosRealizados } from "../stats.js";
+import { resumoGeral, rankingGolsAssistencias, mediaNotaJogadoresNoJogo, resultadoJogo, jogosRealizados, saldoGols } from "../stats.js";
 import { getFiltroPeriodo, setFiltroPeriodo, filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
 function renderQr(containerId, texto){
@@ -30,6 +30,8 @@ export function renderDashboard(root, state){
   const realizadosFiltrados = filtrarPorPeriodo(todosRealizados, filtro);
 
   const r = resumoGeral(realizadosFiltrados);
+  const saldo = saldoGols(realizadosFiltrados);
+  const pctAssistencia = r.qtdGols > 0 ? Math.round((r.qtdAssistencias / r.qtdGols) * 100) : 0;
   const top3GA = rankingGolsAssistencias(state.atletas, realizadosFiltrados).slice(0, 3);
   const ultimos5 = [...realizadosFiltrados].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 5);
   const top3Partidas = realizadosFiltrados
@@ -37,8 +39,15 @@ export function renderDashboard(root, state){
     .filter(x => x.media !== null)
     .sort((a, b) => b.media - a.media)
     .slice(0, 3);
+  // Próximos jogos não seguem o filtro de ano/mês — são sempre os agendamentos
+  // futuros mais próximos, independente do período usado pra olhar o histórico.
+  const proximosJogos = state.jogos
+    .filter(j => j.status !== "realizado")
+    .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+    .slice(0, 5);
 
   const nomeAdv = id => escapeHtml(state.adversarios.find(a => a.id === id)?.nome || "?");
+  const nomeCampo = id => escapeHtml(state.campos.find(c => c.id === id)?.nome || "?");
   const appUrl = location.origin + location.pathname;
 
   root.innerHTML = `
@@ -86,11 +95,10 @@ export function renderDashboard(root, state){
     <div class="kpi-grid">
       <div class="kpi-tile"><div class="kpi-label">Jogos realizados</div><div class="kpi-value">${r.qtdJogos}</div></div>
       <div class="kpi-tile"><div class="kpi-label">Gols</div><div class="kpi-value">${r.qtdGols}</div></div>
-      <div class="kpi-tile"><div class="kpi-label">Assistências</div><div class="kpi-value">${r.qtdAssistencias}</div></div>
+      <div class="kpi-tile"><div class="kpi-label">Saldo de gols</div><div class="kpi-value">${saldo.saldo > 0 ? "+" : ""}${saldo.saldo}</div></div>
+      <div class="kpi-tile"><div class="kpi-label">% de assistência</div><div class="kpi-value">${pctAssistencia}<span class="unit">%</span></div></div>
       <div class="kpi-tile"><div class="kpi-label">Aproveitamento</div><div class="kpi-value small">${r.vitorias}V <span class="unit">${r.empates}E</span> <span class="unit">${r.derrotas}D</span></div></div>
       <div class="kpi-tile"><div class="kpi-label">Nota média jogadores</div><div class="kpi-value">${fmt1(r.mediaJogadores)}</div></div>
-      <div class="kpi-tile"><div class="kpi-label">Nota média campo</div><div class="kpi-value">${fmt1(r.mediaCampo)}</div></div>
-      <div class="kpi-tile"><div class="kpi-label">Nota média adversário</div><div class="kpi-value">${fmt1(r.mediaAdversario)}</div></div>
     </div>
 
     <div class="dashboard-grid-3">
@@ -139,6 +147,19 @@ export function renderDashboard(root, state){
         }).join("")}
         <div class="form-actions" style="justify-content:flex-start; border:none; padding-top:12px;">
           <a href="#historico" class="btn btn-ghost btn-sm">Ver histórico completo →</a>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="card-title">Próximos jogos</div>
+        <div class="card-sub">Partidas agendadas</div>
+        ${proximosJogos.length === 0 ? `<p style="color:var(--ink-faint); font-size:13px;">Nenhuma partida agendada no momento.</p>` : proximosJogos.map(j => `
+          <div class="event-row" style="cursor:pointer;" data-goto="${j.id}">
+            <span style="width:78px; flex-shrink:0; font-size:11px; color:var(--ink-faint);">${formatDate(j.data)}</span>
+            <span style="flex:1;">vs ${nomeAdv(j.adversarioId)} <span style="color:var(--ink-faint); font-size:11px;">— ${nomeCampo(j.campoId)}</span></span>
+          </div>`).join("")}
+        <div class="form-actions" style="justify-content:flex-start; border:none; padding-top:12px;">
+          <a href="#jogos" class="btn btn-ghost btn-sm">Ver todos os jogos →</a>
         </div>
       </div>
     </div>
