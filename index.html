@@ -9,26 +9,25 @@
 </head>
 <body>
 
-<!-- Login gate -->
-<div id="login-screen" class="login-screen" style="display:none;">
-  <div class="login-card">
-    <div class="brand-crest" style="width:52px;height:52px;font-size:24px;">BC</div>
-    <h1>Bom D' Copus</h1>
-    <p>Gestão do time — cadastros, avaliações e escalação.</p>
-    <button id="btn-google-login" class="btn-google">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.87-3.04.87-2.34 0-4.32-1.58-5.03-3.7H.95v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.73A5.4 5.4 0 0 1 3.69 9c0-.6.1-1.19.28-1.73V4.94H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.06l3.02-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.94l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
-      Entrar com Google
-    </button>
-    <div id="login-error" class="login-error"></div>
-    <div id="login-status" class="login-status"></div>
-  </div>
-</div>
+<!-- App shell (visão geral é pública; jogos/atletas/adversários/campos exigem login) -->
+<div id="app-shell">
+  <header class="mobile-topbar">
+    <div class="mobile-topbar-brand">
+      <img src="assets/logo-bomdcopus.png" alt="Bom D' Copus">
+      <span>BOM D' COPUS</span>
+    </div>
+    <div class="mobile-topbar-auth">
+      <button id="btn-login-mobile" class="btn btn-gold btn-sm">Entrar</button>
+      <div class="user-chip-mini" id="user-chip-mobile" style="display:none;">
+        <img id="user-avatar-mobile" src="" alt="">
+        <button id="btn-signout-mobile" class="btn-signout">Sair</button>
+      </div>
+    </div>
+  </header>
 
-<!-- App shell -->
-<div id="app-shell" style="display:none;">
   <nav class="sidebar">
     <div class="brand">
-      <div class="brand-crest">BC</div>
+      <img src="assets/logo-bomdcopus.png" alt="Bom D' Copus" class="brand-crest-img">
       <div>
         <div class="brand-name">BOM D' COPUS</div>
         <div class="brand-sub">Gestão do time</div>
@@ -53,35 +52,36 @@
       Histórico
     </button>
 
-    <div class="nav-group-label">Partidas</div>
-    <button class="nav-link" data-route="jogos">
+    <div class="nav-group-label nav-protected-only" style="display:none;">Partidas</div>
+    <button class="nav-link nav-protected-only" style="display:none;" data-route="jogos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
       Jogos
     </button>
 
-    <div class="nav-group-label">Cadastros</div>
-    <button class="nav-link" data-route="atletas">
+    <div class="nav-group-label nav-protected-only" style="display:none;">Cadastros</div>
+    <button class="nav-link nav-protected-only" style="display:none;" data-route="atletas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg>
       Atletas
     </button>
-    <button class="nav-link" data-route="adversarios">
+    <button class="nav-link nav-protected-only" style="display:none;" data-route="adversarios">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V4l8 4 8-4v17"/><path d="M4 21h16"/></svg>
       Adversários
     </button>
-    <button class="nav-link" data-route="campos">
+    <button class="nav-link nav-protected-only" style="display:none;" data-route="campos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="1"/><circle cx="12" cy="12" r="2.4"/><path d="M12 6v12M3 9h3v6H3M18 9h3v6h-3"/></svg>
       Campos
     </button>
 
     <div class="sidebar-footer">
-      <div class="user-chip">
+      <button id="btn-login-desktop" class="btn btn-gold btn-sm btn-login-side">Entrar com Google</button>
+      <div class="user-chip" id="user-chip-desktop" style="display:none;">
         <img id="user-avatar" src="" alt="">
         <div style="overflow:hidden;">
           <div id="user-name" class="user-chip-name"></div>
           <div id="user-email" class="user-chip-mail"></div>
         </div>
       </div>
-      <button id="btn-signout" class="btn-signout">Sair</button>
+      <button id="btn-signout" class="btn-signout" style="display:none;">Sair</button>
     </div>
   </nav>
 

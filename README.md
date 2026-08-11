@@ -35,7 +35,7 @@ export const ALLOWED_EMAILS = [
 
 ## 3. Regras de segurança do Firestore
 
-A lista `ALLOWED_EMAILS` só esconde a tela no navegador — a segurança de
+A lista `ALLOWED_EMAILS` só esconde os botões no navegador — a segurança de
 verdade é configurada nas regras do Firestore. Vá em **Firestore Database →
 Regras** e cole (ajustando a lista de e-mails):
 
@@ -49,15 +49,46 @@ service cloud.firestore {
         "outrapessoa@gmail.com"
       ];
     }
-    match /{document=**} {
+
+    // Leitura pública — alimenta Dashboard, Ranking, Escalação ideal e
+    // Histórico sem exigir login. Escrita continua restrita aos e-mails
+    // autorizados (telas de Jogos, Atletas, Adversários, Campos).
+    match /adversarios/{id} {
+      allow read: if true;
+      allow write: if emailPermitido();
+    }
+    match /campos/{id} {
+      allow read: if true;
+      allow write: if emailPermitido();
+    }
+    match /atletas/{id} {
+      allow read: if true;
+      allow write: if emailPermitido();
+    }
+    match /jogos/{id} {
+      allow read: if true;
+      allow write: if emailPermitido();
+    }
+
+    // CPF e data de nascimento ficam numa coleção à parte, com o mesmo id
+    // do atleta, e essa coleção NÃO é pública — só leitura/escrita para
+    // e-mails autorizados.
+    match /atletas_privado/{id} {
       allow read, write: if emailPermitido();
     }
   }
 }
 ```
 
-Clique em **Publicar**. Sem isso, seus dados ficam expostos publicamente
-mesmo que a tela de login esconda o app.
+Clique em **Publicar**. Sem isso, as telas de Jogos/Atletas/Adversários/
+Campos ficam com a leitura/escrita liberada para qualquer pessoa, mesmo que
+o app esconda os botões no navegador.
+
+> ℹ️ As coleções `adversarios`, `campos`, `atletas` e `jogos` ficam com
+> **leitura pública** de propósito — é assim que Dashboard, Ranking,
+> Escalação ideal e Histórico funcionam sem exigir login. Só a **escrita**
+> (criar/editar/excluir) e a coleção `atletas_privado` (CPF, nascimento)
+> exigem estar logado com um e-mail da lista `ALLOWED_EMAILS`.
 
 ## 4. Testar localmente
 
@@ -98,23 +129,37 @@ pasta `/ (root)` → **Save**. Em alguns minutos o app estará disponível em
 ## Estrutura do projeto
 
 ```
-index.html              tela de login + shell do app (sidebar + área de conteúdo)
+index.html              shell do app (sidebar desktop / barra inferior mobile + área de conteúdo)
+assets/logo-bomdcopus.png  escudo do time (usado na sidebar, header mobile e tela de acesso restrito)
 css/style.css           design system (cores, tipografia, componentes)
 js/firebase-config.js   chaves do seu projeto Firebase + e-mails autorizados
 js/auth.js              login com Google / logout
 js/db.js                funções genéricas de leitura/escrita no Firestore
 js/stats.js             cálculos: médias, ranking, contagens
 js/utils.js             helpers de UI (modal, toast, formatação)
-js/app.js               roteamento (por #hash) e ligação entre views e dados
+js/app.js               roteamento (por #hash), controle de acesso e ligação entre views e dados
 js/views/*.js           uma view por tela (dashboard, jogos, cadastros...)
 ```
+
+## Navegação pública x protegida
+
+- **Públicas (sem login):** Dashboard, Ranking, Escalação ideal e Histórico.
+  Qualquer pessoa com o link consegue abrir e ver os dados.
+- **Protegidas (exige login com e-mail autorizado):** Jogos, Atletas,
+  Adversários e Campos. Sem login, esses links somem do menu e, se alguém
+  tentar acessar direto pela URL (`#jogos`, `#atletas`...), o app mostra uma
+  tela de "Acesso restrito" com um botão para entrar com Google.
+- No celular, o menu vira uma barra fixa de ícones no rodapé; no desktop
+  continua como uma barra lateral.
 
 ## Modelo de dados (Firestore)
 
 - **`adversarios`**: `{ nome, cidade, observacoes }`
 - **`campos`**: `{ nome, endereco, tipo, observacoes }`
-- **`atletas`**: `{ nome, posicao, numero, cpf, dataNascimento, ativo, observacoes }`
-  (`cpf` e `dataNascimento` são opcionais)
+- **`atletas`**: `{ nome, posicao, numero, ativo, observacoes }` (pública)
+- **`atletas_privado`**: `{ cpf, dataNascimento }`, documento com o **mesmo id**
+  do atleta correspondente — coleção não pública, só leitura/escrita para
+  e-mails autorizados. Ambos os campos são opcionais.
 - **`jogos`**: documento central de cada partida —
   `{ data, status, adversarioId, campoId, placarNos, placarAdversario,
   escalacaoInicial: [{ atletaId, posicao }...], escalacaoFinal: [{ atletaId, posicao }...],

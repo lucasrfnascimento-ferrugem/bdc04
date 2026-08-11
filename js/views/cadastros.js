@@ -1,10 +1,10 @@
 import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1 } from "../utils.js";
-import { createDoc, saveDoc, removeDoc } from "../db.js";
+import { createDoc, saveDoc, removeDoc, setPrivateDoc, getPrivateDoc } from "../db.js";
 import { mediaNotaAtleta, mediaCampo, mediaAdversario, contagemJogosPorCampo, contagemJogosPorAdversario } from "../stats.js";
 
-// ============================================================================
+// ===========================================================================
 // Motor genérico de CRUD (usado por Atletas, Adversários e Campos)
-// ============================================================================
+// ===========================================================================
 
 export function fieldHtml(f, item){
   const val = item ? item[f.key] : (f.default ?? "");
@@ -53,6 +53,18 @@ export function collectFormData(fields, formEl){
   return data;
 }
 
+// Separa os campos marcados como `private:true` (ex: CPF, data de nascimento)
+// dos campos públicos — os privados vão para uma coleção à parte, com leitura
+// restrita a e-mails autorizados nas regras do Firestore.
+function splitPublicPrivate(fields, data){
+  const pub = {}, priv = {};
+  fields.forEach(f => {
+    if (f.private) priv[f.key] = data[f.key];
+    else pub[f.key] = data[f.key];
+  });
+  return { pub, priv };
+}
+
 function openCrudForm(opts, item){
   const isEdit = !!item;
   const fieldsHtml = opts.fields.map(f => fieldHtml(f, item)).join("");
@@ -79,11 +91,17 @@ function openCrudForm(opts, item){
   $("#crud-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const data = collectFormData(opts.fields, e.target);
+    const { pub, priv } = opts.privateCollectionName ? splitPublicPrivate(opts.fields, data) : { pub: data, priv: null };
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
     try{
-      if (isEdit) await saveDoc(opts.collectionName, item.id, data);
-      else await createDoc(opts.collectionName, data);
+      if (isEdit){
+        await saveDoc(opts.collectionName, item.id, pub);
+        if (opts.privateCollectionName) await setPrivateDoc(opts.privateCollectionName, item.id, priv);
+      } else {
+        const ref = await createDoc(opts.collectionName, pub);
+        if (opts.privateCollectionName) await setPrivateDoc(opts.privateCollectionName, ref.id, priv);
+      }
       toast(`${opts.singular} salvo.`, "ok");
       closeModal();
     }catch(err){
@@ -98,6 +116,7 @@ function openCrudForm(opts, item){
       if (!confirmAction(`Excluir "${item[opts.fields[0].key] || ""}"? Essa ação não pode ser desfeita.`)) return;
       try{
         await removeDoc(opts.collectionName, item.id);
+        if (opts.privateCollectionName) await removeDoc(opts.privateCollectionName, item.id);
         toast(`${opts.singular} excluído.`, "ok");
         closeModal();
       }catch(err){
@@ -135,30 +154,42 @@ function renderCrudView(root, opts, state){
 
   $("#btn-new").addEventListener("click", () => openCrudForm(opts, null));
   $$("tbody tr[data-id]", root).forEach(tr => {
-    tr.addEventListener("click", () => {
+    tr.addEventListener("click", async () => {
       const item = items.find(i => i.id === tr.dataset.id);
-      if (item) openCrudForm(opts, item);
+      if (!item) return;
+      if (!opts.privateCollectionName){
+        openCrudForm(opts, item);
+        return;
+      }
+      try{
+        const priv = await getPrivateDoc(opts.privateCollectionName, item.id);
+        openCrudForm(opts, { ...item, ...priv });
+      }catch(err){
+        console.error(err);
+        toast("Erro ao carregar dados: " + err.message, "err");
+      }
     });
   });
 }
 
-// ============================================================================
+// ===========================================================================
 // Configurações específicas
-// ============================================================================
+// ===========================================================================
 
 export const POSICOES = ["Goleiro", "Zagueiro", "Lateral", "Volante", "Meia", "Atacante"];
 
 export function renderAtletas(root, state){
   renderCrudView(root, {
     collectionName: "atletas",
+    privateCollectionName: "atletas_privado",
     singular: "Atleta",
     plural: "Atletas",
     fields: [
       { key: "nome", label: "Nome", type: "text", required: true, span2: true },
       { key: "posicao", label: "Posição", type: "select", options: POSICOES, placeholder: "Selecione" },
       { key: "numero", label: "Número da camisa", type: "number", min: 0 },
-      { key: "cpf", label: "CPF (opcional)", type: "text", placeholder: "000.000.000-00" },
-      { key: "dataNascimento", label: "Data de nascimento (opcional)", type: "date" },
+      { key: "cpf", label: "CPF (opcional)", type: "text", placeholder: "000.000.000-00", private: true },
+      { key: "dataNascimento", label: "Data de nascimento (opcional)", type: "date", private: true },
       { key: "ativo", label: "Atleta ativo no elenco", type: "checkbox", default: true },
       { key: "observacoes", label: "Observações", type: "textarea", span2: true },
     ],

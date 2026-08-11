@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot,
-  query, orderBy, serverTimestamp
+  query, orderBy, serverTimestamp, setDoc, getDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { db } from "./auth.js";
 
@@ -30,6 +30,21 @@ export async function saveDoc(name, id, data){
 
 export async function removeDoc(name, id){
   return deleteDoc(doc(db, name, id));
+}
+
+// ----------------------------------------------------------------------------
+// Documentos "privados" (ex: atletas_privado) — mesmo id do documento
+// público correspondente, leitura/escrita restrita a e-mails autorizados
+// pelas regras do Firestore.
+// ----------------------------------------------------------------------------
+
+export async function setPrivateDoc(name, id, data){
+  return setDoc(doc(db, name, id), data, { merge: true });
+}
+
+export async function getPrivateDoc(name, id){
+  const snap = await getDoc(doc(db, name, id));
+  return snap.exists() ? snap.data() : {};
 }
 
 // ----------------------------------------------------------------------------
