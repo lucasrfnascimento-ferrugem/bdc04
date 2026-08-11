@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, fmt1 } from "../utils.js";
+import { $, $$, escapeHtml, fmt1, toast } from "../utils.js";
 import { mediaNotaAtleta, notasPorPosicao, jogosRealizados } from "../stats.js";
 import { filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
@@ -44,6 +44,66 @@ let formacaoAtual = "4-3-3";
 let filtroAno = "";
 let filtroMes = "";
 const excluidos = new Set();
+
+// Gera uma imagem (PNG) do campo com a escalação ideal e compartilha (Web
+// Share API, quando disponível) ou baixa o arquivo. Renderiza numa cópia
+// fora da tela, forçando o layout "desktop" (windowWidth maior) pra imagem
+// sair sempre nítida e legível, mesmo se o usuário estiver no celular.
+async function compartilharImagemEscalacao(linhasHtml, formacao){
+  if (typeof html2canvas !== "function"){
+    toast("Não foi possível gerar a imagem (recurso indisponível).", "err");
+    return;
+  }
+  const card = document.createElement("div");
+  card.style.cssText = "position:fixed; left:-9999px; top:0; width:520px; background:#fff; padding:22px; font-family:'Inter',system-ui,sans-serif;";
+  card.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+      <img src="assets/logo-bomdcopus.png" crossorigin="anonymous" style="width:38px; height:38px; border-radius:50%; object-fit:cover;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; color:#141414; line-height:1;">BOM D' COPUS</div>
+        <div style="font-size:11px; color:#5B6470; margin-top:2px;">Escalação ideal — formação ${escapeHtml(formacao)}</div>
+      </div>
+    </div>
+    <div class="pitch-board" style="min-height:auto;">${linhasHtml}</div>
+  `;
+  document.body.appendChild(card);
+
+  try{
+    const canvas = await html2canvas(card, { backgroundColor: "#ffffff", scale: 2, windowWidth: 1000, useCORS: true });
+    card.remove();
+
+    canvas.toBlob(async (blob) => {
+      if (!blob){
+        toast("Não foi possível gerar a imagem.", "err");
+        return;
+      }
+      const file = new File([blob], `escalacao-ideal-${formacao}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })){
+        try{
+          await navigator.share({ files: [file], title: "Escalação ideal", text: `Escalação ideal — Bom D' Copus (${formacao})` });
+          return;
+        }catch(err){
+          if (err?.name === "AbortError") return; // usuário cancelou o compartilhamento
+          console.error(err);
+        }
+      }
+      // Sem suporte a compartilhar arquivos (ou falhou) — baixa a imagem direto.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `escalacao-ideal-${formacao}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast("Imagem salva!", "ok");
+    }, "image/png");
+  }catch(err){
+    card.remove();
+    console.error(err);
+    toast("Erro ao gerar a imagem: " + err.message, "err");
+  }
+}
 
 export function renderEscalacaoIdeal(root, state){
   const realizados = jogosRealizados(state.jogos);
@@ -120,6 +180,9 @@ export function renderEscalacaoIdeal(root, state){
   root.innerHTML = `
     <div class="topbar">
       <div><div class="eyebrow">Visão geral</div><h1>Escalação ideal</h1></div>
+      <button class="btn-icon-share" id="btn-print-escalacao" type="button" title="Compartilhar imagem da escalação" aria-label="Compartilhar imagem da escalação" ${!temDados ? "disabled" : ""}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
     </div>
     <p style="font-size:13px; color:var(--ink-soft); margin:-14px 0 20px; max-width:640px;">
       Calculada a partir da nota média de cada atleta nas avaliações pós-jogo, agrupada pela posição em que
@@ -203,5 +266,16 @@ export function renderEscalacaoIdeal(root, state){
       if (e.target.checked) excluidos.delete(id); else excluidos.add(id);
       renderEscalacaoIdeal(root, state);
     });
+  });
+
+  $("#btn-print-escalacao", root)?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    toast("Gerando imagem…", "ok");
+    try{
+      await compartilharImagemEscalacao(linhasHtml, formacaoAtual);
+    } finally {
+      btn.disabled = false;
+    }
   });
 }

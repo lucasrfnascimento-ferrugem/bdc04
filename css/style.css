@@ -410,8 +410,10 @@ tbody tr.clickable{cursor:pointer;}
   .pitch-player .nota{font-size:9px;}
 
   /* Tabelas mais compactas no mobile — reduz a chance de precisar rolar
-     horizontalmente pra ver a última coluna. */
-  thead th, tbody td{padding:8px 8px; font-size:12.5px;}
+     horizontalmente pra ver a última coluna. Cabeçalhos podem quebrar linha
+     (ex: "Nota média") em vez de forçar a coluna a ficar larga demais. */
+  thead th, tbody td{padding:6px 6px; font-size:11px;}
+  thead th{white-space:normal; line-height:1.2;}
 }
 @media (min-width: 881px){
   .mobile-topbar{display:none;}
