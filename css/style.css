@@ -335,6 +335,10 @@ tbody tr.clickable{cursor:pointer;}
 }
 .pitch-line-players{display:flex; justify-content:space-evenly; gap:8px; flex-wrap:wrap; position:relative; z-index:1;}
 .pitch-player{text-align:center; color:#fff;}
+.pitch-player[data-slot-idx]{cursor:pointer; border-radius:8px; padding:2px; transition:background .1s ease;}
+.pitch-player[data-slot-idx]:hover{background:rgba(255,255,255,.08);}
+.pitch-player.selecionado{background:rgba(228,182,43,.18);}
+.pitch-player.selecionado .dot{box-shadow:0 0 0 3px var(--gold);}
 .pitch-player .dot{
   width:38px; height:38px; border-radius:50%; background:var(--gold); color:var(--gold-ink);
   display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700;
