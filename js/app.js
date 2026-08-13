@@ -25,6 +25,27 @@ function allLoaded(){
   return Object.values(state.loaded).every(Boolean);
 }
 
+// ============================================================================
+// Router (declarado aqui em cima, antes do bloco de cache, porque o cache
+// pode chamar render() de forma síncrona durante a avaliação do módulo — e
+// render() depende de ROUTES/PROTECTED_ROUTES já estarem inicializados
+// nesse momento).
+// ============================================================================
+
+const ROUTES = {
+  dashboard: renderDashboard,
+  ranking: renderRanking,
+  "escalacao-ideal": renderEscalacaoIdeal,
+  historico: renderHistorico,
+  atletas: renderAtletas,
+  adversarios: renderAdversarios,
+  campos: renderCampos,
+  avaliacao: renderAvaliacao,
+  cadastros: renderCadastrosHub,
+};
+
+const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao", "cadastros"]);
+
 // ----------------------------------------------------------------------------
 // Cache local (localStorage) — mostra a última versão conhecida dos dados na
 // hora (sem esperar o Firestore responder de novo) e atualiza em segundo
@@ -81,24 +102,6 @@ if (cached){
   state.loaded = { adversarios: true, campos: true, atletas: true, jogos: true };
   render();
 }
-
-// ============================================================================
-// Router
-// ============================================================================
-
-const ROUTES = {
-  dashboard: renderDashboard,
-  ranking: renderRanking,
-  "escalacao-ideal": renderEscalacaoIdeal,
-  historico: renderHistorico,
-  atletas: renderAtletas,
-  adversarios: renderAdversarios,
-  campos: renderCampos,
-  avaliacao: renderAvaliacao,
-  cadastros: renderCadastrosHub,
-};
-
-const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao", "cadastros"]);
 
 function parseHash(){
   const raw = (location.hash || "#dashboard").slice(1);
