@@ -244,7 +244,7 @@ function renderEscalacaoPanel(jogo, atletas, field){
     <div class="card card-pad">
       <div class="card-title">${field === "escalacaoInicial" ? "Escalação inicial" : "Escalação final"}</div>
       <div class="card-sub">Selecione os atletas que jogaram e a posição em que atuaram nesta partida.</div>
-      <div class="player-grid">
+      <div class="player-grid player-grid-escalacao">
         ${disponiveis.map(a => {
           const checked = selecionados.has(a.id);
           const posicaoAtual = posicaoPorId[a.id] || a.posicao || "";

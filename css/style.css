@@ -409,6 +409,11 @@ tbody tr.clickable{cursor:pointer;}
   .player-chip{padding:6px 8px; font-size:12px; gap:6px;}
   .player-num{width:16px; font-size:11px;}
 
+  /* Escalação (Jogos): cada chip tem nome + select de posição, então no
+     mobile fica melhor com só 2 colunas (em vez das 3 do grid genérico
+     acima) — dá espaço de sobra pro nome do jogador e pro select. */
+  .player-grid-escalacao{grid-template-columns:repeat(2, 1fr);}
+
   /* Campo (escalação ideal) mais enxuto no mobile pra caber por inteiro. */
   .pitch-board{padding:16px 8px; min-height:auto; gap:10px;}
   .pitch-line-players{gap:2px;}
