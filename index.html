@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bom D' Copus — Gestão do Time</title>
+<script>
+  // Aplica o tema salvo (claro/escuro) antes da 1ª renderização, pra não
+  // piscar o tema errado por uma fração de segundo ao carregar a página.
+  (function(){
+    try{
+      if (localStorage.getItem("bdc_theme") === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    }catch(err){ /* localStorage indisponível — fica no tema claro (padrão) */ }
+  })();
+</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%23E4B62B%22/><text x=%2250%22 y=%2266%22 font-size=%2250%22 text-anchor=%22middle%22 font-family=%22Georgia%22>⚽</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 </head>

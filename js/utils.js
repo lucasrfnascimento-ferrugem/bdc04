@@ -101,6 +101,29 @@ export function wireRatingWidgets(root){
 }
 
 // ----------------------------------------------------------------------------
+// Tema claro / escuro — persistido no localStorage e aplicado via atributo
+// `data-theme` na tag <html> (o CSS reage a esse atributo em style.css).
+// index.html já aplica o tema salvo antes do 1º paint, pra não piscar.
+// ----------------------------------------------------------------------------
+const THEME_KEY = "bdc_theme";
+
+export function getTheme(){
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
+export function setTheme(theme){
+  if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  else document.documentElement.removeAttribute("data-theme");
+  try{ localStorage.setItem(THEME_KEY, theme); }catch(err){ /* localStorage indisponível — vale só pra essa sessão */ }
+}
+
+export function toggleTheme(){
+  const next = getTheme() === "dark" ? "light" : "dark";
+  setTheme(next);
+  return next;
+}
+
+// ----------------------------------------------------------------------------
 // Tabelas com colunas ordenáveis (clique no cabeçalho pra alternar
 // crescente/decrescente) — usado em Atletas, Adversários, Campos e Histórico.
 // `sortState` é um objeto mutável `{ key, dir }` mantido pela tela que chama

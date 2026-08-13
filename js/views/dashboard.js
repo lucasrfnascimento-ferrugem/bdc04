@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, formatDate, fmt1, toast } from "../utils.js";
+import { $, $$, escapeHtml, formatDate, fmt1, toast, getTheme, toggleTheme } from "../utils.js";
 import { resumoGeral, rankingGolsAssistencias, mediaNotaJogadoresNoJogo, resultadoJogo, jogosRealizados, saldoGols, ehJogador } from "../stats.js";
 import { getFiltroPeriodo, setFiltroPeriodo, filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
@@ -50,24 +50,37 @@ export function renderDashboard(root, state){
   const nomeCampo = id => escapeHtml(state.campos.find(c => c.id === id)?.nome || "?");
   const appUrl = location.origin + location.pathname;
 
+  const theme = getTheme();
+  const themeTitle = theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro";
+  const themeIcon = theme === "dark"
+    // sol — indica que, ao clicar, volta pro tema claro
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`
+    // lua — indica que, ao clicar, ativa o tema escuro
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
   root.innerHTML = `
     <div class="topbar">
       <div>
         <div class="eyebrow">Visão geral</div>
         <h1>Dashboard</h1>
       </div>
-      <div class="share-popover-wrap">
-        <button class="btn-icon-share" id="btn-share" type="button" title="Compartilhar app" aria-label="Compartilhar app">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-3.8M8.6 13.4l6.8 3.8"/></svg>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn-icon-share" id="btn-theme-toggle" type="button" title="${themeTitle}" aria-label="${themeTitle}">
+          ${themeIcon}
         </button>
-        <div class="share-popover" id="share-popover">
-          <div class="card-title" style="font-size:13.5px;">Acesso rápido ao app</div>
-          <div class="card-sub" style="margin-bottom:10px;">Compartilhe o link ou escaneie o QR code.</div>
-          <div class="share-link-row">
-            <input id="app-link" class="share-link-input" type="text" readonly value="${escapeHtml(appUrl)}">
-            <button class="btn btn-primary btn-sm" id="btn-copy-link" type="button">Copiar</button>
+        <div class="share-popover-wrap">
+          <button class="btn-icon-share" id="btn-share" type="button" title="Compartilhar app" aria-label="Compartilhar app">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-3.8M8.6 13.4l6.8 3.8"/></svg>
+          </button>
+          <div class="share-popover" id="share-popover">
+            <div class="card-title" style="font-size:13.5px;">Acesso rápido ao app</div>
+            <div class="card-sub" style="margin-bottom:10px;">Compartilhe o link ou escaneie o QR code.</div>
+            <div class="share-link-row">
+              <input id="app-link" class="share-link-input" type="text" readonly value="${escapeHtml(appUrl)}">
+              <button class="btn btn-primary btn-sm" id="btn-copy-link" type="button">Copiar</button>
+            </div>
+            <div class="qr-box" id="qr-code" style="margin-top:12px;"></div>
           </div>
-          <div class="qr-box" id="qr-code" style="margin-top:12px;"></div>
         </div>
       </div>
     </div>
@@ -169,6 +182,11 @@ export function renderDashboard(root, state){
 
   $("#filtro-ano", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ ano: e.target.value }); renderDashboard(root, state); });
   $("#filtro-mes", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ mes: e.target.value }); renderDashboard(root, state); });
+
+  $("#btn-theme-toggle", root)?.addEventListener("click", () => {
+    toggleTheme();
+    renderDashboard(root, state);
+  });
 
   $("#btn-share", root)?.addEventListener("click", (e) => {
     e.stopPropagation();
