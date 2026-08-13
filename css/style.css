@@ -78,7 +78,6 @@ body{
   color:var(--ink);
   background:var(--chalk);
   -webkit-font-smoothing:antialiased;
-  transition:background-color .15s ease, color .15s ease;
 }
 h1,h2,h3,h4{font-family:var(--font-display); letter-spacing:.02em; margin:0; font-weight:400;}
 a{color:inherit;}
@@ -175,7 +174,6 @@ main#view-root{
   transition:transform .05s ease;
 }
 .btn:active{transform:scale(.98);}
-.btn{transition:background-color .15s ease, color .15s ease, border-color .15s ease;}
 .btn-primary{background:var(--accent); color:var(--accent-ink);}
 .btn-primary:hover{filter:brightness(.85);}
 .btn-gold{background:var(--gold); color:var(--gold-ink);}
@@ -211,7 +209,7 @@ main#view-root{
    Tables
    ========================================================================== */
 .table-wrap{overflow-x:auto; border-radius:var(--radius); border:1px solid var(--line);}
-table{width:100%; border-collapse:collapse; background:var(--card); font-size:13.5px; transition:background-color .15s ease;}
+table{width:100%; border-collapse:collapse; background:var(--card); font-size:13.5px;}
 thead th{
   text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
   color:var(--ink-soft); font-weight:700; background:var(--pitch-light);
@@ -243,7 +241,6 @@ tbody tr.clickable{cursor:pointer;}
 .field input, .field select, .field textarea{
   font-family:var(--font-body); font-size:13.5px; padding:9px 11px;
   border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--card); color:var(--ink);
-  transition:background-color .15s ease, color .15s ease, border-color .15s ease;
 }
 .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px var(--pitch-light);}
 .field textarea{resize:vertical; min-height:64px;}
@@ -319,7 +316,6 @@ tbody tr.clickable{cursor:pointer;}
 .player-chip{
   border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 10px;
   display:flex; align-items:center; gap:8px; font-size:13px; background:var(--card);
-  transition:background-color .15s ease, border-color .15s ease;
 }
 .player-chip input{margin:0;}
 .player-chip.selected{border-color:var(--accent); background:var(--pitch-light);}
@@ -347,7 +343,6 @@ tbody tr.clickable{cursor:pointer;}
   display:flex; align-items:center; justify-content:center;
   width:36px; height:36px; border-radius:50%; border:1px solid var(--line);
   background:var(--card); color:var(--ink-soft); flex-shrink:0;
-  transition:background-color .15s ease, color .15s ease;
 }
 .btn-icon-share:hover{background:var(--pitch-light); color:var(--ink);}
 .btn-icon-share svg{width:17px; height:17px;}
