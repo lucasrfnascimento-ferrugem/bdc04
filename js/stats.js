@@ -16,6 +16,16 @@ export function jogosRealizados(jogos){
 // ----------------------------------------------------------------------------
 // Gols e assistências
 // ----------------------------------------------------------------------------
+
+// Valor especial usado no lugar de um atletaId em golsAssistencias quando o
+// gol foi contra (o adversário marcou contra o próprio time) — conta pro
+// placar/total de gols do time, mas não é creditado a nenhum atleta.
+export const GOL_CONTRA_ID = "GOL_CONTRA";
+
+// Opções de "como foi o gol" e "qual tempo", usadas no formulário de eventos.
+export const TIPOS_GOL = ["Finalização", "Cabeceio", "Falta", "Pênalti"];
+export const TEMPOS_JOGO = ["1º tempo", "2º tempo"];
+
 export function golsEAssistenciasPorAtleta(jogos){
   const map = {}; // atletaId -> { gols, assistencias }
   const bump = (id, key) => {
@@ -25,7 +35,7 @@ export function golsEAssistenciasPorAtleta(jogos){
   };
   jogosRealizados(jogos).forEach(j => {
     (j.golsAssistencias || []).forEach(evt => {
-      if (evt.atletaGolId) bump(evt.atletaGolId, "gols");
+      if (evt.atletaGolId && evt.atletaGolId !== GOL_CONTRA_ID) bump(evt.atletaGolId, "gols");
       if (evt.atletaAssistId) bump(evt.atletaAssistId, "assistencias");
     });
   });

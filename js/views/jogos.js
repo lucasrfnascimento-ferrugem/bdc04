@@ -1,7 +1,9 @@
 import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, formatDate, formatDateLong, todayISO, fmt1, ratingWidgetHtml, wireRatingWidgets } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, updateJogoField } from "../db.js";
 import { fieldHtml, collectFormData, POSICOES } from "./cadastros.js";
-import { resultadoJogo, normalizeEscalacao, ehJogador } from "../stats.js";
+import { resultadoJogo, normalizeEscalacao, ehJogador, GOL_CONTRA_ID, TIPOS_GOL, TEMPOS_JOGO } from "../stats.js";
+
+export const TIPOS_PARTIDA = ["Amistoso", "Festival", "Campeonato"];
 
 let activeTab = "escalacao-inicial";
 let lastJogoId = null;
@@ -18,6 +20,7 @@ function jogoFields(state){
       options: state.adversarios.map(a => ({ value: a.id, label: a.nome })) },
     { key: "campoId", label: "Campo", type: "select", required: true, placeholder: "Selecione",
       options: state.campos.map(c => ({ value: c.id, label: c.nome })) },
+    { key: "tipoPartida", label: "Tipo de partida", type: "select", options: TIPOS_PARTIDA, placeholder: "Selecione" },
     { key: "placarNos", label: "Placar — Nós", type: "number", min: 0 },
     { key: "placarAdversario", label: "Placar — Adversário", type: "number", min: 0 },
     { key: "observacoes", label: "Observações", type: "textarea", span2: true },
@@ -113,6 +116,7 @@ export function renderJogosList(root, state){
         <td>${formatDate(j.data)}</td>
         <td><strong>${escapeHtml(adv?.nome || "—")}</strong></td>
         <td>${escapeHtml(campo?.nome || "—")}</td>
+        <td>${escapeHtml(j.tipoPartida || "—")}</td>
         <td>${placar}</td>
         <td>${statusBadge}</td>
       </tr>`;
@@ -128,8 +132,8 @@ export function renderJogosList(root, state){
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Data</th><th>Adversário</th><th>Campo</th><th>Placar</th><th>Status</th></tr></thead>
-        <tbody>${rows || `<tr class="empty-row"><td colspan="5">Nenhum jogo cadastrado ainda.</td></tr>`}</tbody>
+        <thead><tr><th>Data</th><th>Adversário</th><th>Campo</th><th>Tipo</th><th>Placar</th><th>Status</th></tr></thead>
+        <tbody>${rows || `<tr class="empty-row"><td colspan="6">Nenhum jogo cadastrado ainda.</td></tr>`}</tbody>
       </table>
     </div>
   `;
@@ -175,6 +179,7 @@ export function renderJogoDetail(root, state, jogoId){
       <div class="sumula-side"><div class="team">${escapeHtml(adv?.nome || "?")}</div><div class="score">${jogo.placarAdversario ?? "–"}</div></div>
       <div class="sumula-meta">
         <span>📍 ${escapeHtml(campo?.nome || "Campo não definido")}</span>
+        ${jogo.tipoPartida ? `<span>🏷️ ${escapeHtml(jogo.tipoPartida)}</span>` : ""}
         <span>${jogo.status === "realizado" ? (resultado ? { vitoria: "🏆 Vitória", empate: "➖ Empate", derrota: "❌ Derrota" }[resultado] : "Realizado") : "🗓️ Agendado"}</span>
       </div>
     </div>
@@ -309,15 +314,20 @@ function wireEscalacaoPanel(root, jogo, field, panelSel){
 
 function renderGolsPanel(jogo, atletas){
   const eventos = jogo.golsAssistencias || [];
-  const nome = id => escapeHtml(atletas.find(a => a.id === id)?.nome || "?");
-  const rows = eventos.map((e, idx) => `
+  const nome = id => id === GOL_CONTRA_ID ? "Gol contra (adversário)" : escapeHtml(atletas.find(a => a.id === id)?.nome || "?");
+  const rows = eventos.map((e, idx) => {
+    const meta = [e.tipoGol, e.tempo].filter(Boolean).map(escapeHtml).join(" · ");
+    return `
     <div class="event-row">
       <span class="event-min">${e.minuto ?? "–"}'</span>
-      <span>⚽ ${nome(e.atletaGolId)}${e.atletaAssistId ? ` <span style="color:var(--ink-soft);">(assist. ${nome(e.atletaAssistId)})</span>` : ""}</span>
+      <span>⚽ ${nome(e.atletaGolId)}${e.atletaAssistId ? ` <span style="color:var(--ink-soft);">(assist. ${nome(e.atletaAssistId)})</span>` : ""}${meta ? ` <span style="color:var(--ink-faint); font-size:11px;">— ${meta}</span>` : ""}</span>
       <button class="btn btn-ghost btn-sm" style="margin-left:auto;" data-remove-evt="${idx}">Remover</button>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 
   const options = atletas.filter(ehJogador).map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join("");
+  const tipoGolOptions = TIPOS_GOL.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+  const tempoOptions = TEMPOS_JOGO.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
 
   return `
     <div class="card card-pad">
@@ -325,9 +335,11 @@ function renderGolsPanel(jogo, atletas){
       <div class="card-sub">${eventos.length} evento(s) registrado(s)</div>
       ${rows || `<p style="color:var(--ink-faint); font-size:13px;">Nenhum gol registrado ainda.</p>`}
       <div class="form-grid" style="margin-top:18px; padding-top:16px; border-top:1px solid var(--line);">
-        <div class="field"><label>Gol de</label><select id="evt-gol"><option value="">Selecione</option>${options}</select></div>
+        <div class="field"><label>Gol de</label><select id="evt-gol"><option value="">Selecione</option><option value="${GOL_CONTRA_ID}">⚽ Gol contra (adversário)</option>${options}</select></div>
         <div class="field"><label>Assistência de (opcional)</label><select id="evt-assist"><option value="">Sem assistência</option>${options}</select></div>
         <div class="field"><label>Minuto</label><input type="number" id="evt-min" min="0" max="150" placeholder="ex: 34"></div>
+        <div class="field"><label>Como foi o gol (opcional)</label><select id="evt-tipo"><option value="">Selecione</option>${tipoGolOptions}</select></div>
+        <div class="field"><label>Qual tempo (opcional)</label><select id="evt-tempo"><option value="">Selecione</option>${tempoOptions}</select></div>
       </div>
       <div class="form-actions"><button class="btn btn-primary" id="btn-add-evt">+ Adicionar evento</button></div>
     </div>
@@ -348,14 +360,28 @@ function wireGolsPanel(root, jogo, atletas){
       }catch(err){ toast("Erro: " + err.message, "err"); }
     });
   });
+  // Gol contra não tem assistência do próprio time — desabilita o campo pra evitar dado inconsistente.
+  const golSel = $("#evt-gol", panel);
+  const assistSel = $("#evt-assist", panel);
+  golSel?.addEventListener("change", () => {
+    const isContra = golSel.value === GOL_CONTRA_ID;
+    if (assistSel){
+      assistSel.disabled = isContra;
+      if (isContra) assistSel.value = "";
+    }
+  });
   $("#btn-add-evt", panel)?.addEventListener("click", async () => {
     const golId = $("#evt-gol", panel).value;
     const assistId = $("#evt-assist", panel).value;
     const minuto = $("#evt-min", panel).value;
+    const tipoGol = $("#evt-tipo", panel).value;
+    const tempo = $("#evt-tempo", panel).value;
     if (!golId){ toast("Selecione quem fez o gol.", "err"); return; }
     if (assistId && assistId === golId){ toast("O autor do gol e da assistência não podem ser o mesmo atleta.", "err"); return; }
+    if (golId === GOL_CONTRA_ID && assistId){ toast("Gol contra não tem assistência.", "err"); return; }
     const eventos = [...(jogo.golsAssistencias || []), {
       atletaGolId: golId, atletaAssistId: assistId || null, minuto: minuto ? Number(minuto) : null,
+      tipoGol: tipoGol || null, tempo: tempo || null,
     }];
     try{
       await updateJogoField(jogo.id, { golsAssistencias: eventos });

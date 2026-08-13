@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, formatDate, fmt1 } from "../utils.js";
+import { $, $$, escapeHtml, formatDate, fmt1, toast } from "../utils.js";
 import { statsPorAtleta, ehJogador } from "../stats.js";
 
 let activeMetric = "ga"; // jogos | gols | assistencias | ga | nota
@@ -41,6 +41,67 @@ function filtrarPorMetrica(lista, metrica){
   }
 }
 
+// Gera uma imagem (PNG) da tabela de ranking atual (já filtrada/ordenada) e
+// compartilha (Web Share API) ou baixa o arquivo — pra mandar rapidinho no
+// grupo do WhatsApp. Mesmo padrão usado no botão de compartilhar da Escalação ideal.
+async function compartilharImagemRanking(theadHtml, tbodyHtml, metricLabel, periodoLabel){
+  if (typeof html2canvas !== "function"){
+    toast("Não foi possível gerar a imagem (recurso indisponível).", "err");
+    return;
+  }
+  const card = document.createElement("div");
+  card.style.cssText = "position:fixed; left:-9999px; top:0; width:640px; background:#fff; padding:22px; font-family:'Inter',system-ui,sans-serif;";
+  card.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+      <img src="assets/logo-bomdcopus.png" crossorigin="anonymous" style="width:38px; height:38px; border-radius:50%; object-fit:cover;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; color:#141414; line-height:1;">BOM D' COPUS</div>
+        <div style="font-size:11px; color:#5B6470; margin-top:2px;">Ranking — ${escapeHtml(metricLabel)} · ${escapeHtml(periodoLabel)}</div>
+      </div>
+    </div>
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>${theadHtml}</thead>
+      <tbody>${tbodyHtml}</tbody>
+    </table>
+  `;
+  document.body.appendChild(card);
+
+  try{
+    const canvas = await html2canvas(card, { backgroundColor: "#ffffff", scale: 2, windowWidth: 1000, useCORS: true });
+    card.remove();
+
+    canvas.toBlob(async (blob) => {
+      if (!blob){
+        toast("Não foi possível gerar a imagem.", "err");
+        return;
+      }
+      const file = new File([blob], `ranking-${metricLabel}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })){
+        try{
+          await navigator.share({ files: [file], title: "Ranking", text: `Ranking — Bom D' Copus (${metricLabel})` });
+          return;
+        }catch(err){
+          if (err?.name === "AbortError") return; // usuário cancelou o compartilhamento
+          console.error(err);
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ranking-${metricLabel}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast("Imagem salva!", "ok");
+    }, "image/png");
+  }catch(err){
+    card.remove();
+    console.error(err);
+    toast("Erro ao gerar a imagem: " + err.message, "err");
+  }
+}
+
 export function renderRanking(root, state){
   const realizados = [...state.jogos]
     .filter(j => j.status === "realizado")
@@ -67,6 +128,7 @@ export function renderRanking(root, state){
   const stats = statsPorAtleta(state.atletas.filter(ehJogador), jogosFiltrados);
   const listaFinal = ordenarPorMetrica(filtrarPorMetrica(stats, activeMetric), activeMetric);
 
+  const theadRowHtml = `<tr><th>#</th><th>Atleta</th><th>Posição</th><th>Jogos</th><th>Gols</th><th>Assist.</th><th>G+A</th><th>Nota média</th></tr>`;
   const rows = listaFinal.map((s, i) => `
     <tr>
       <td class="pill-num">${i + 1}º</td>
@@ -85,6 +147,9 @@ export function renderRanking(root, state){
         <div class="eyebrow">Visão geral</div>
         <h1>Ranking</h1>
       </div>
+      <button class="btn-icon-share" id="btn-print-ranking" type="button" title="Compartilhar imagem do ranking" aria-label="Compartilhar imagem do ranking" ${listaFinal.length === 0 ? "disabled" : ""}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
     </div>
 
     <div class="tabbar">
@@ -120,7 +185,7 @@ export function renderRanking(root, state){
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Atleta</th><th>Posição</th><th>Jogos</th><th>Gols</th><th>Assist.</th><th>G+A</th><th>Nota média</th></tr></thead>
+        <thead>${theadRowHtml}</thead>
         <tbody>${rows || `<tr class="empty-row"><td colspan="8">Nenhum dado para os filtros selecionados.</td></tr>`}</tbody>
       </table>
     </div>
@@ -137,4 +202,22 @@ export function renderRanking(root, state){
   $("#filtro-ano", root)?.addEventListener("change", (e) => { filtroAno = e.target.value; renderRanking(root, state); });
   $("#filtro-mes", root)?.addEventListener("change", (e) => { filtroMes = e.target.value; renderRanking(root, state); });
   $("#filtro-partida", root)?.addEventListener("change", (e) => { filtroPartida = e.target.value; renderRanking(root, state); });
+
+  $("#btn-print-ranking", root)?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    toast("Gerando imagem…", "ok");
+    try{
+      const periodoLabel = filtroPartida
+        ? (() => {
+            const j = realizados.find(x => x.id === filtroPartida);
+            return j ? `${formatDate(j.data)} vs ${nomeAdv(j.adversarioId)}` : "Partida específica";
+          })()
+        : [filtroMes ? MESES[Number(filtroMes) - 1] : null, filtroAno].filter(Boolean).join("/") || "Todos os períodos";
+      const metricLabel = METRICAS.find(m => m.key === activeMetric)?.label || "Ranking";
+      await compartilharImagemRanking(theadRowHtml, rows || `<tr><td colspan="8" style="text-align:center; color:#999; padding:20px;">Nenhum dado para os filtros selecionados.</td></tr>`, metricLabel, periodoLabel);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }

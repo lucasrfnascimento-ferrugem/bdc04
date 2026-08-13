@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1 } from "../utils.js";
+import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1, sortRows, sortableTh, wireSortableHeaders } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, setPrivateDoc, getPrivateDoc } from "../db.js";
 import { mediaNotaAtleta, mediaCampo, mediaAdversario, contagemJogosPorCampo, contagemJogosPorAdversario, POSICAO_TECNICO } from "../stats.js";
 
@@ -126,11 +126,78 @@ function openCrudForm(opts, item){
   }
 }
 
+// Estado de ordenação de cada tabela (uma entrada por coleção) — variável de
+// módulo pra sobreviver entre re-renders (a tela inteira é recriada a cada
+// clique de cabeçalho ou atualização do Firestore).
+const sortStates = {};
+function getSortState(collectionName){
+  if (!sortStates[collectionName]) sortStates[collectionName] = { key: null, dir: "asc" };
+  return sortStates[collectionName];
+}
+
+// Visibilidade de colunas (só usada nas telas com `columnToggle: true`, hoje
+// só Atletas) — persistida no localStorage do navegador pra lembrar a
+// preferência entre sessões.
+function colsStorageKey(collectionName){ return `bdc_cols_${collectionName}`; }
+
+function getVisibleColumns(opts){
+  if (!opts.columnToggle) return opts.columns;
+  let visibleKeys = null;
+  try{
+    const raw = localStorage.getItem(colsStorageKey(opts.collectionName));
+    if (raw){
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length) visibleKeys = arr;
+    }
+  }catch(err){ /* localStorage indisponível ou dado corrompido — ignora e usa o padrão */ }
+  if (!visibleKeys) visibleKeys = opts.columns.filter(c => c.default !== false).map(c => c.key);
+  const cols = opts.columns.filter(c => visibleKeys.includes(c.key));
+  return cols.length ? cols : opts.columns.filter(c => c.default !== false);
+}
+
+function openColumnEditor(opts, onSave){
+  const visible = new Set(getVisibleColumns(opts).map(c => c.key));
+  const checksHtml = opts.columns.map(c => `
+    <label style="display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--line);">
+      <input type="checkbox" data-col="${c.key}" ${visible.has(c.key) ? "checked" : ""} style="width:16px; height:16px;">
+      ${escapeHtml(c.label)}
+    </label>`).join("");
+  openModal(`
+    <div class="modal-head">
+      <h3>Editar colunas</h3>
+      <button class="modal-close" data-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px; color:var(--ink-faint); margin-bottom:6px;">Escolha quais colunas aparecem na tabela.</p>
+      <div id="col-checks">${checksHtml}</div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-save-cols">Salvar</button>
+      </div>
+    </div>
+  `);
+  $$("[data-close]").forEach(b => b.addEventListener("click", closeModal));
+  $("#btn-save-cols").addEventListener("click", () => {
+    const checked = $$("#col-checks input[type=checkbox]:checked").map(i => i.dataset.col);
+    if (checked.length === 0){ toast("Selecione ao menos uma coluna.", "err"); return; }
+    try{
+      localStorage.setItem(colsStorageKey(opts.collectionName), JSON.stringify(checked));
+    }catch(err){ /* localStorage indisponível — a preferência só vale pra essa sessão */ }
+    closeModal();
+    onSave();
+  });
+}
+
 function renderCrudView(root, opts, state){
   const items = state[opts.collectionName] || [];
-  const rows = items.map(item => `
+  const sortState = getSortState(opts.collectionName);
+  const visibleCols = getVisibleColumns(opts);
+  const sortFns = Object.fromEntries(opts.columns.map(c => [c.key, c.sort]));
+  const sortedItems = sortRows(items, sortState, sortFns, state);
+
+  const rows = sortedItems.map(item => `
     <tr class="clickable" data-id="${item.id}">
-      ${opts.columns.map(c => `<td>${c.render(item, state)}</td>`).join("")}
+      ${visibleCols.map(c => `<td>${c.render(item, state)}</td>`).join("")}
     </tr>
   `).join("");
 
@@ -140,19 +207,25 @@ function renderCrudView(root, opts, state){
         <div class="eyebrow">Cadastro</div>
         <h1>${opts.plural}</h1>
       </div>
-      <button class="btn btn-primary" id="btn-new">+ Novo(a) ${opts.singular}</button>
+      <div style="display:flex; gap:8px;">
+        ${opts.columnToggle ? `<button class="btn btn-ghost" id="btn-edit-cols">Editar colunas</button>` : ""}
+        <button class="btn btn-primary" id="btn-new">+ Novo(a) ${opts.singular}</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr>${opts.columns.map(c => `<th>${c.label}</th>`).join("")}</tr></thead>
+        <thead><tr>${visibleCols.map(c => sortableTh(c.label, c.key, sortState)).join("")}</tr></thead>
         <tbody>
-          ${rows || `<tr class="empty-row"><td colspan="${opts.columns.length}">Nenhum(a) ${opts.singular.toLowerCase()} cadastrado(a) ainda.</td></tr>`}
+          ${rows || `<tr class="empty-row"><td colspan="${visibleCols.length}">Nenhum(a) ${opts.singular.toLowerCase()} cadastrado(a) ainda.</td></tr>`}
         </tbody>
       </table>
     </div>
   `;
 
+  wireSortableHeaders(root, sortState, () => renderCrudView(root, opts, state));
+
   $("#btn-new").addEventListener("click", () => openCrudForm(opts, null));
+  $("#btn-edit-cols")?.addEventListener("click", () => openColumnEditor(opts, () => renderCrudView(root, opts, state)));
   $$("tbody tr[data-id]", root).forEach(tr => {
     tr.addEventListener("click", async () => {
       const item = items.find(i => i.id === tr.dataset.id);
@@ -233,8 +306,11 @@ export function renderAtletas(root, state){
     privateCollectionName: "atletas_privado",
     singular: "Atleta",
     plural: "Atletas",
+    columnToggle: true,
     fields: [
       { key: "nome", label: "Nome", type: "text", required: true, span2: true },
+      { key: "nomeCompleto", label: "Nome completo", type: "text", span2: true },
+      { key: "telefone", label: "Telefone", type: "text", placeholder: "(00) 00000-0000" },
       { key: "posicao", label: "Posição / categoria", type: "select", options: CATEGORIAS_ATLETA, placeholder: "Selecione" },
       { key: "numero", label: "Número da camisa", type: "number", min: 0 },
       { key: "cpf", label: "CPF (opcional)", type: "text", placeholder: "000.000.000-00", private: true },
@@ -243,20 +319,25 @@ export function renderAtletas(root, state){
       { key: "podeVotar", label: "Direito a voto (diretor/capitão)", type: "checkbox", default: false },
       { key: "observacoes", label: "Observações", type: "textarea", span2: true },
     ],
+    // "Nome completo" e "Telefone" ficam disponíveis no cadastro mas não
+    // entram na tabela por padrão (default:false) — o usuário liga essas
+    // colunas pelo botão "Editar colunas" se quiser vê-las.
     columns: [
-      { label: "#", render: a => `<span class="pill-num">${a.numero ?? "—"}</span>` },
-      { label: "Nome", render: a => `<strong>${escapeHtml(a.nome)}</strong>` },
-      { label: "Posição", render: a => escapeHtml(a.posicao || "—") },
-      { label: "Status", render: a => a.ativo === false
+      { key: "numero", label: "#", render: a => `<span class="pill-num">${a.numero ?? "—"}</span>`, sort: a => a.numero ?? -1, default: true },
+      { key: "nome", label: "Nome", render: a => `<strong>${escapeHtml(a.nome)}</strong>`, sort: a => (a.nome || "").toLowerCase(), default: true },
+      { key: "nomeCompleto", label: "Nome completo", render: a => escapeHtml(a.nomeCompleto || "—"), sort: a => (a.nomeCompleto || "").toLowerCase(), default: false },
+      { key: "telefone", label: "Telefone", render: a => escapeHtml(a.telefone || "—"), sort: a => a.telefone || "", default: false },
+      { key: "posicao", label: "Posição", render: a => escapeHtml(a.posicao || "—"), sort: a => a.posicao || "", default: true },
+      { key: "status", label: "Status", render: a => a.ativo === false
         ? `<span class="badge badge-off">Inativo</span>`
-        : `<span class="badge badge-ok">Ativo</span>` },
-      { label: "Votante", render: a => a.podeVotar
+        : `<span class="badge badge-ok">Ativo</span>`, sort: a => a.ativo === false ? 0 : 1, default: true },
+      { key: "votante", label: "Votante", render: a => a.podeVotar
         ? `<span class="badge badge-pending">Vota</span>`
-        : `<span style="color:var(--ink-faint);">—</span>` },
-      { label: "Nota média", render: (a, state) => {
+        : `<span style="color:var(--ink-faint);">—</span>`, sort: a => a.podeVotar ? 1 : 0, default: true },
+      { key: "notaMedia", label: "Nota média", render: (a, state) => {
         const { media, qtd } = mediaNotaAtleta(a.id, state.jogos);
         return media === null ? "—" : `${fmt1(media)} <span style="color:var(--ink-faint); font-size:11px;">(${qtd})</span>`;
-      }},
+      }, sort: (a, state) => mediaNotaAtleta(a.id, state.jogos).media, default: true },
     ],
   }, state);
 }
@@ -272,13 +353,13 @@ export function renderAdversarios(root, state){
       { key: "observacoes", label: "Observações", type: "textarea", span2: true },
     ],
     columns: [
-      { label: "Nome", render: a => `<strong>${escapeHtml(a.nome)}</strong>` },
-      { label: "Cidade", render: a => escapeHtml(a.cidade || "—") },
-      { label: "Jogos", render: (a, state) => contagemJogosPorAdversario(state.jogos)[a.id] || 0 },
-      { label: "Nota média", render: (a, state) => {
+      { key: "nome", label: "Nome", render: a => `<strong>${escapeHtml(a.nome)}</strong>`, sort: a => (a.nome || "").toLowerCase() },
+      { key: "cidade", label: "Cidade", render: a => escapeHtml(a.cidade || "—"), sort: a => a.cidade || "" },
+      { key: "jogos", label: "Jogos", render: (a, state) => contagemJogosPorAdversario(state.jogos)[a.id] || 0, sort: (a, state) => contagemJogosPorAdversario(state.jogos)[a.id] || 0 },
+      { key: "notaMedia", label: "Nota média", render: (a, state) => {
         const { media, qtd } = mediaAdversario(a.id, state.jogos);
         return media === null ? "—" : `${fmt1(media)} <span style="color:var(--ink-faint); font-size:11px;">(${qtd})</span>`;
-      }},
+      }, sort: (a, state) => mediaAdversario(a.id, state.jogos).media },
     ],
   }, state);
 }
@@ -295,13 +376,13 @@ export function renderCampos(root, state){
       { key: "observacoes", label: "Observações", type: "textarea", span2: true },
     ],
     columns: [
-      { label: "Nome", render: c => `<strong>${escapeHtml(c.nome)}</strong>` },
-      { label: "Tipo", render: c => escapeHtml(c.tipo || "—") },
-      { label: "Jogos", render: (c, state) => contagemJogosPorCampo(state.jogos)[c.id] || 0 },
-      { label: "Nota média", render: (c, state) => {
+      { key: "nome", label: "Nome", render: c => `<strong>${escapeHtml(c.nome)}</strong>`, sort: c => (c.nome || "").toLowerCase() },
+      { key: "tipo", label: "Tipo", render: c => escapeHtml(c.tipo || "—"), sort: c => c.tipo || "" },
+      { key: "jogos", label: "Jogos", render: (c, state) => contagemJogosPorCampo(state.jogos)[c.id] || 0, sort: (c, state) => contagemJogosPorCampo(state.jogos)[c.id] || 0 },
+      { key: "notaMedia", label: "Nota média", render: (c, state) => {
         const { media, qtd } = mediaCampo(c.id, state.jogos);
         return media === null ? "—" : `${fmt1(media)} <span style="color:var(--ink-faint); font-size:11px;">(${qtd})</span>`;
-      }},
+      }, sort: (c, state) => mediaCampo(c.id, state.jogos).media },
     ],
   }, state);
 }

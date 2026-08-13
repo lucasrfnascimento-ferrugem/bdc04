@@ -99,3 +99,47 @@ export function wireRatingWidgets(root){
     });
   });
 }
+
+// ----------------------------------------------------------------------------
+// Tabelas com colunas ordenáveis (clique no cabeçalho pra alternar
+// crescente/decrescente) — usado em Atletas, Adversários, Campos e Histórico.
+// `sortState` é um objeto mutável `{ key, dir }` mantido pela tela que chama
+// (variável de módulo, pra sobreviver entre re-renders).
+// ----------------------------------------------------------------------------
+export function sortRows(rows, sortState, sortFns, ...extraArgs){
+  if (!sortState?.key || typeof sortFns[sortState.key] !== "function") return rows;
+  const getVal = sortFns[sortState.key];
+  const dir = sortState.dir === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const va = getVal(a, ...extraArgs);
+    const vb = getVal(b, ...extraArgs);
+    const aNull = va === null || va === undefined || va === "";
+    const bNull = vb === null || vb === undefined || vb === "";
+    if (aNull && bNull) return 0;
+    if (aNull) return 1; // valores vazios sempre por último, independente da direção
+    if (bNull) return -1;
+    if (typeof va === "string" || typeof vb === "string") return String(va).localeCompare(String(vb), "pt-BR") * dir;
+    return (va - vb) * dir;
+  });
+}
+
+export function sortableTh(label, key, sortState){
+  const active = sortState?.key === key;
+  const arrow = active ? (sortState.dir === "desc" ? " ▾" : " ▴") : "";
+  return `<th class="sortable" data-sort-key="${key}">${escapeHtml(label)}<span class="sort-arrow">${arrow}</span></th>`;
+}
+
+export function wireSortableHeaders(root, sortState, onChange){
+  $$("thead th.sortable[data-sort-key]", root).forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sortKey;
+      if (sortState.key === key){
+        sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+      } else {
+        sortState.key = key;
+        sortState.dir = "asc";
+      }
+      onChange();
+    });
+  });
+}
