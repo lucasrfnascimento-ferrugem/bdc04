@@ -64,7 +64,9 @@ export function openModal(innerHtml, { wide = false } = {}){
 }
 
 function escCloseHandler(e){
-  if (e.key === "Escape") closeModal();
+  // Se houver um confirmAction() aberto por cima (delete, etc.), o Escape
+  // deve fechar só ele — não o modal de edição por trás.
+  if (e.key === "Escape" && !document.getElementById("confirm-overlay")) closeModal();
 }
 
 export function closeModal(){
