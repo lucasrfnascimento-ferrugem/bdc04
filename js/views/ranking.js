@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, formatDate, fmt1, toast } from "../utils.js";
+import { $, $$, escapeHtml, formatDate, fmt1, toast, reRenderKeepingFocus } from "../utils.js";
 import { statsPorAtleta, ehJogador } from "../stats.js";
 
 let activeMetric = "ga"; // jogos | gols | assistencias | ga | nota
@@ -195,13 +195,13 @@ export function renderRanking(root, state){
     btn.classList.toggle("active", btn.dataset.metric === activeMetric);
     btn.addEventListener("click", () => {
       activeMetric = btn.dataset.metric;
-      renderRanking(root, state);
+      reRenderKeepingFocus(root, () => renderRanking(root, state));
     });
   });
 
-  $("#filtro-ano", root)?.addEventListener("change", (e) => { filtroAno = e.target.value; renderRanking(root, state); });
-  $("#filtro-mes", root)?.addEventListener("change", (e) => { filtroMes = e.target.value; renderRanking(root, state); });
-  $("#filtro-partida", root)?.addEventListener("change", (e) => { filtroPartida = e.target.value; renderRanking(root, state); });
+  $("#filtro-ano", root)?.addEventListener("change", (e) => { filtroAno = e.target.value; reRenderKeepingFocus(root, () => renderRanking(root, state)); });
+  $("#filtro-mes", root)?.addEventListener("change", (e) => { filtroMes = e.target.value; reRenderKeepingFocus(root, () => renderRanking(root, state)); });
+  $("#filtro-partida", root)?.addEventListener("change", (e) => { filtroPartida = e.target.value; reRenderKeepingFocus(root, () => renderRanking(root, state)); });
 
   $("#btn-print-ranking", root)?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;

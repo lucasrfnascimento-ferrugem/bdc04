@@ -113,7 +113,7 @@ function openCrudForm(opts, item){
 
   if (isEdit){
     $("#btn-delete-item").addEventListener("click", async () => {
-      if (!confirmAction(`Excluir "${item[opts.fields[0].key] || ""}"? Essa ação não pode ser desfeita.`)) return;
+      if (!(await confirmAction(`Excluir "${item[opts.fields[0].key] || ""}"? Essa ação não pode ser desfeita.`))) return;
       try{
         await removeDoc(opts.collectionName, item.id);
         if (opts.privateCollectionName) await removeDoc(opts.privateCollectionName, item.id);
@@ -252,7 +252,7 @@ function renderCrudView(root, opts, state){
   });
 
   $("#btn-new").addEventListener("click", () => openCrudForm(opts, null));
-  $("#btn-edit-cols")?.addEventListener("click", () => openColumnEditor(opts, () => renderCrudView(root, opts, state)));
+  $("#btn-edit-cols")?.addEventListener("click", () => openColumnEditor(opts, () => reRenderKeepingFocus(root, () => renderCrudView(root, opts, state))));
   $$("tbody tr[data-id]", root).forEach(tr => {
     tr.addEventListener("click", async () => {
       const item = items.find(i => i.id === tr.dataset.id);

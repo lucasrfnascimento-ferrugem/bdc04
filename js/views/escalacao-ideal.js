@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, fmt1, toast } from "../utils.js";
+import { $, $$, escapeHtml, fmt1, toast, reRenderKeepingFocus } from "../utils.js";
 import { mediaNotaAtleta, notasPorPosicao, jogosRealizados, ehJogador } from "../stats.js";
 import { filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
@@ -331,21 +331,21 @@ export function renderEscalacaoIdeal(root, state){
 
   // Trocar formação, período ou a seleção de jogadores invalida qualquer
   // arranjo manual feito até então — a sugestão automática é recalculada do zero.
-  $("#sel-formacao", root)?.addEventListener("change", (e) => { formacaoAtual = e.target.value; resetArranjoManual(); renderEscalacaoIdeal(root, state); });
-  $("#filtro-ano", root)?.addEventListener("change", (e) => { filtroAno = e.target.value; resetArranjoManual(); renderEscalacaoIdeal(root, state); });
-  $("#filtro-mes", root)?.addEventListener("change", (e) => { filtroMes = e.target.value; resetArranjoManual(); renderEscalacaoIdeal(root, state); });
+  $("#sel-formacao", root)?.addEventListener("change", (e) => { formacaoAtual = e.target.value; resetArranjoManual(); reRenderKeepingFocus(root, () => renderEscalacaoIdeal(root, state)); });
+  $("#filtro-ano", root)?.addEventListener("change", (e) => { filtroAno = e.target.value; resetArranjoManual(); reRenderKeepingFocus(root, () => renderEscalacaoIdeal(root, state)); });
+  $("#filtro-mes", root)?.addEventListener("change", (e) => { filtroMes = e.target.value; resetArranjoManual(); reRenderKeepingFocus(root, () => renderEscalacaoIdeal(root, state)); });
   $$("[data-excluir]", root).forEach(chk => {
     chk.addEventListener("change", (e) => {
       const id = e.target.dataset.excluir;
       if (e.target.checked) excluidos.delete(id); else excluidos.add(id);
       resetArranjoManual();
-      renderEscalacaoIdeal(root, state);
+      reRenderKeepingFocus(root, () => renderEscalacaoIdeal(root, state));
     });
   });
 
   $("#btn-reset-arranjo", root)?.addEventListener("click", () => {
     resetArranjoManual();
-    renderEscalacaoIdeal(root, state);
+    reRenderKeepingFocus(root, () => renderEscalacaoIdeal(root, state));
     toast("Escalação restaurada para a sugestão automática.", "ok");
   });
 
@@ -362,7 +362,7 @@ export function renderEscalacaoIdeal(root, state){
         [ordem[selecionadoIdx], ordem[idx]] = [ordem[idx], ordem[selecionadoIdx]];
         selecionadoIdx = null;
       }
-      renderEscalacaoIdeal(root, state);
+      reRenderKeepingFocus(root, () => renderEscalacaoIdeal(root, state));
     });
   });
 

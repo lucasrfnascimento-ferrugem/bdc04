@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, formatDate, fmt1, toast, getTheme, toggleTheme } from "../utils.js";
+import { $, $$, escapeHtml, formatDate, fmt1, toast, getTheme, toggleTheme, reRenderKeepingFocus } from "../utils.js";
 import { resumoGeral, rankingGolsAssistencias, mediaNotaJogadoresNoJogo, resultadoJogo, jogosRealizados, saldoGols, ehJogador } from "../stats.js";
 import { getFiltroPeriodo, setFiltroPeriodo, filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
@@ -180,12 +180,12 @@ export function renderDashboard(root, state){
 
   $$("[data-goto]", root).forEach(el => el.addEventListener("click", () => { location.hash = `#jogos/${el.dataset.goto}`; }));
 
-  $("#filtro-ano", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ ano: e.target.value }); renderDashboard(root, state); });
-  $("#filtro-mes", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ mes: e.target.value }); renderDashboard(root, state); });
+  $("#filtro-ano", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ ano: e.target.value }); reRenderKeepingFocus(root, () => renderDashboard(root, state)); });
+  $("#filtro-mes", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ mes: e.target.value }); reRenderKeepingFocus(root, () => renderDashboard(root, state)); });
 
   $("#btn-theme-toggle", root)?.addEventListener("click", () => {
     toggleTheme();
-    renderDashboard(root, state);
+    reRenderKeepingFocus(root, () => renderDashboard(root, state));
   });
 
   $("#btn-share", root)?.addEventListener("click", (e) => {

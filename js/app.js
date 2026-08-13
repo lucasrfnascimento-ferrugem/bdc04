@@ -25,15 +25,62 @@ function allLoaded(){
   return Object.values(state.loaded).every(Boolean);
 }
 
+// ----------------------------------------------------------------------------
+// Cache local (localStorage) — mostra a última versão conhecida dos dados na
+// hora (sem esperar o Firestore responder de novo) e atualiza em segundo
+// plano assim que os dados de verdade chegam. Só afeta a primeira tela de
+// cada visita; a partir daí o app já está reagindo em tempo real do jeito
+// que sempre reagiu. Numa visita totalmente nova (sem cache), o comportamento
+// é idêntico ao de antes: tela de carregando até os dados chegarem.
+// ----------------------------------------------------------------------------
+const CACHE_KEY = "bdc_state_cache_v1";
+
+function loadCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached || typeof cached !== "object") return null;
+    return cached;
+  }catch(err){
+    return null; // cache ausente, corrompido ou localStorage indisponível — ignora
+  }
+}
+
+function saveCache(){
+  try{
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      adversarios: state.adversarios, campos: state.campos, atletas: state.atletas, jogos: state.jogos,
+    }));
+  }catch(err){
+    // localStorage indisponível/cheio — não é crítico, só perde a otimização
+  }
+}
+
 // Coleções públicas (leitura liberada nas regras do Firestore) — carregadas
 // sempre, independente de login, para alimentar as telas públicas.
+function onDataChange(){
+  if (allLoaded()) saveCache();
+  render();
+}
+
 function startListeners(){
-  listenCollection("adversarios", "nome", (items) => { state.adversarios = items; state.loaded.adversarios = true; render(); });
-  listenCollection("campos", "nome", (items) => { state.campos = items; state.loaded.campos = true; render(); });
-  listenCollection("atletas", "nome", (items) => { state.atletas = items; state.loaded.atletas = true; render(); });
-  listenCollection("jogos", "data", (items) => { state.jogos = items; state.loaded.jogos = true; render(); });
+  listenCollection("adversarios", "nome", (items) => { state.adversarios = items; state.loaded.adversarios = true; onDataChange(); });
+  listenCollection("campos", "nome", (items) => { state.campos = items; state.loaded.campos = true; onDataChange(); });
+  listenCollection("atletas", "nome", (items) => { state.atletas = items; state.loaded.atletas = true; onDataChange(); });
+  listenCollection("jogos", "data", (items) => { state.jogos = items; state.loaded.jogos = true; onDataChange(); });
 }
 startListeners();
+
+const cached = loadCache();
+if (cached){
+  state.adversarios = cached.adversarios || [];
+  state.campos = cached.campos || [];
+  state.atletas = cached.atletas || [];
+  state.jogos = cached.jogos || [];
+  state.loaded = { adversarios: true, campos: true, atletas: true, jogos: true };
+  render();
+}
 
 // ============================================================================
 // Router

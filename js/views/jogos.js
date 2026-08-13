@@ -85,7 +85,7 @@ function openJogoForm(state, item, onSaved){
 
   if (isEdit){
     $("#btn-delete-jogo").addEventListener("click", async () => {
-      if (!confirmAction("Excluir este jogo e todos os dados dele (escalação, gols, avaliações)? Essa ação não pode ser desfeita.")) return;
+      if (!(await confirmAction("Excluir este jogo e todos os dados dele (escalação, gols, avaliações)? Essa ação não pode ser desfeita."))) return;
       try{
         await removeDoc("jogos", item.id);
         toast("Jogo excluído.", "ok");

@@ -110,8 +110,8 @@ export function renderHistorico(root, state){
     });
   });
 
-  $("#filtro-ano", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ ano: e.target.value }); renderHistorico(root, state); });
-  $("#filtro-mes", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ mes: e.target.value }); renderHistorico(root, state); });
+  $("#filtro-ano", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ ano: e.target.value }); reRenderKeepingFocus(root, () => renderHistorico(root, state)); });
+  $("#filtro-mes", root)?.addEventListener("change", (e) => { setFiltroPeriodo({ mes: e.target.value }); reRenderKeepingFocus(root, () => renderHistorico(root, state)); });
 }
 
 function openSumulaModal(jogo, state){
