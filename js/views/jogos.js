@@ -1,12 +1,13 @@
-import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, formatDate, formatDateLong, todayISO, fmt1, ratingWidgetHtml, wireRatingWidgets } from "../utils.js";
+import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, formatDate, formatDateLong, todayISO, fmt1, ratingWidgetHtml, wireRatingWidgets, reRenderKeepingFocus } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, updateJogoField } from "../db.js";
 import { fieldHtml, collectFormData, POSICOES } from "./cadastros.js";
-import { resultadoJogo, normalizeEscalacao, ehJogador, GOL_CONTRA_ID, TIPOS_GOL, TEMPOS_JOGO } from "../stats.js";
+import { resultadoJogo, normalizeEscalacao, ehJogador, GOL_CONTRA_ID, TIPOS_GOL, TEMPOS_JOGO, jogadoresDaPartida } from "../stats.js";
 
 export const TIPOS_PARTIDA = ["Amistoso", "Festival", "Campeonato"];
 
 let activeTab = "escalacao-inicial";
 let lastJogoId = null;
+let searchJogos = "";
 
 // ============================================================================
 // Formulário de jogo (criar / editar dados gerais)
@@ -102,10 +103,19 @@ function openJogoForm(state, item, onSaved){
 // ============================================================================
 
 export function renderJogosList(root, state){
-  const jogos = [...state.jogos].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const nomeAdv = id => state.adversarios.find(a => a.id === id)?.nome || "";
+  const nomeCampo = id => state.campos.find(c => c.id === id)?.nome || "";
+
+  const todos = [...state.jogos].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const termo = searchJogos.toLowerCase();
+  const jogos = termo
+    ? todos.filter(j =>
+        nomeAdv(j.adversarioId).toLowerCase().includes(termo) ||
+        nomeCampo(j.campoId).toLowerCase().includes(termo) ||
+        (j.tipoPartida || "").toLowerCase().includes(termo))
+    : todos;
+
   const rows = jogos.map(j => {
-    const adv = state.adversarios.find(a => a.id === j.adversarioId);
-    const campo = state.campos.find(c => c.id === j.campoId);
     const placar = j.status === "realizado" && j.placarNos !== null && j.placarNos !== undefined
       ? `<span class="pill-num">${j.placarNos} x ${j.placarAdversario ?? 0}</span>` : "—";
     const statusBadge = j.status === "realizado"
@@ -114,13 +124,15 @@ export function renderJogosList(root, state){
     return `
       <tr class="clickable" data-id="${j.id}">
         <td>${formatDate(j.data)}</td>
-        <td><strong>${escapeHtml(adv?.nome || "—")}</strong></td>
-        <td>${escapeHtml(campo?.nome || "—")}</td>
+        <td><strong>${escapeHtml(nomeAdv(j.adversarioId) || "—")}</strong></td>
+        <td>${escapeHtml(nomeCampo(j.campoId) || "—")}</td>
         <td>${escapeHtml(j.tipoPartida || "—")}</td>
         <td>${placar}</td>
         <td>${statusBadge}</td>
       </tr>`;
   }).join("");
+
+  const emptyMsg = termo ? `Nenhum jogo encontrado para "${escapeHtml(searchJogos)}".` : "Nenhum jogo cadastrado ainda.";
 
   root.innerHTML = `
     <div class="topbar">
@@ -130,13 +142,22 @@ export function renderJogosList(root, state){
       </div>
       <button class="btn btn-primary" id="btn-new-jogo">+ Novo jogo</button>
     </div>
+    <div class="field" style="max-width:320px; margin-bottom:16px;">
+      <label>Buscar por adversário, campo ou tipo</label>
+      <input type="text" id="input-busca" placeholder="Digite pra filtrar…" value="${escapeHtml(searchJogos)}">
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Data</th><th>Adversário</th><th>Campo</th><th>Tipo</th><th>Placar</th><th>Status</th></tr></thead>
-        <tbody>${rows || `<tr class="empty-row"><td colspan="6">Nenhum jogo cadastrado ainda.</td></tr>`}</tbody>
+        <tbody>${rows || `<tr class="empty-row"><td colspan="6">${emptyMsg}</td></tr>`}</tbody>
       </table>
     </div>
   `;
+
+  $("#input-busca", root)?.addEventListener("input", (e) => {
+    searchJogos = e.target.value;
+    reRenderKeepingFocus(root, () => renderJogosList(root, state));
+  });
 
   $("#btn-new-jogo").addEventListener("click", () => openJogoForm(state, null, (newId) => { location.hash = `#jogos/${newId}`; }));
   $$("tbody tr[data-id]", root).forEach(tr => {
@@ -325,7 +346,12 @@ function renderGolsPanel(jogo, atletas){
     </div>`;
   }).join("");
 
-  const options = atletas.filter(ehJogador).map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join("");
+  // Só oferece os jogadores escalados nessa partida (inicial ou final) — evita
+  // rolar a lista inteira do elenco pra achar quem jogou. Se a escalação ainda
+  // não foi preenchida, cai pro elenco completo pra não travar o cadastro do gol.
+  const escalados = jogadoresDaPartida(jogo, atletas);
+  const poolJogadores = escalados.length > 0 ? escalados : atletas.filter(ehJogador);
+  const options = poolJogadores.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join("");
   const tipoGolOptions = TIPOS_GOL.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
   const tempoOptions = TEMPOS_JOGO.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
 

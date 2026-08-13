@@ -101,6 +101,34 @@ export function wireRatingWidgets(root){
 }
 
 // ----------------------------------------------------------------------------
+// Re-renderiza uma tela preservando o foco (e a posição do cursor, se for um
+// campo de texto) do elemento focado dentro de `root`. As telas desse app
+// recriam o HTML inteiro a cada interação (root.innerHTML = ...), o que por
+// padrão tira o foco de qualquer campo — isso quebra a experiência de digitar
+// num campo de busca com filtro em tempo real. Usa essa função no lugar de
+// chamar a função de render direto sempre que a interação parte de um campo
+// de texto que continua na tela depois do re-render (ex: busca).
+// ----------------------------------------------------------------------------
+export function reRenderKeepingFocus(root, renderFn){
+  const active = document.activeElement;
+  const isInsideRoot = !!active && root.contains(active);
+  const id = isInsideRoot ? active.id : null;
+  const hasSelection = isInsideRoot && typeof active.selectionStart === "number";
+  const selStart = hasSelection ? active.selectionStart : null;
+  const selEnd = hasSelection ? active.selectionEnd : null;
+
+  renderFn();
+
+  if (!id) return;
+  const el = root.querySelector(`#${CSS.escape(id)}`);
+  if (!el) return;
+  el.focus();
+  if (selStart !== null && typeof el.setSelectionRange === "function"){
+    try{ el.setSelectionRange(selStart, selEnd); }catch(err){ /* tipo de input sem seleção de texto (ex: select) — ignora */ }
+  }
+}
+
+// ----------------------------------------------------------------------------
 // Tema claro / escuro — persistido no localStorage e aplicado via atributo
 // `data-theme` na tag <html> (o CSS reage a esse atributo em style.css).
 // index.html já aplica o tema salvo antes do 1º paint, pra não piscar.

@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1, sortRows, sortableTh, wireSortableHeaders } from "../utils.js";
+import { $, $$, escapeHtml, openModal, closeModal, toast, confirmAction, fmt1, sortRows, sortableTh, wireSortableHeaders, reRenderKeepingFocus } from "../utils.js";
 import { createDoc, saveDoc, removeDoc, setPrivateDoc, getPrivateDoc } from "../db.js";
 import { mediaNotaAtleta, mediaCampo, mediaAdversario, contagemJogosPorCampo, contagemJogosPorAdversario, POSICAO_TECNICO } from "../stats.js";
 
@@ -135,6 +135,15 @@ function getSortState(collectionName){
   return sortStates[collectionName];
 }
 
+// Busca por nome (uma entrada por coleção, mesma ideia do sortStates acima).
+// Todas as 3 telas que usam esse motor genérico (Atletas/Adversários/Campos)
+// têm um campo "nome", então a busca funciona igual pras três sem precisar
+// de configuração por tela.
+const searchStates = {};
+function getSearchState(collectionName){
+  return searchStates[collectionName] || "";
+}
+
 // Visibilidade de colunas (só usada nas telas com `columnToggle: true`, hoje
 // só Atletas) — persistida no localStorage do navegador pra lembrar a
 // preferência entre sessões.
@@ -191,15 +200,24 @@ function openColumnEditor(opts, onSave){
 function renderCrudView(root, opts, state){
   const items = state[opts.collectionName] || [];
   const sortState = getSortState(opts.collectionName);
+  const searchTerm = getSearchState(opts.collectionName);
   const visibleCols = getVisibleColumns(opts);
   const sortFns = Object.fromEntries(opts.columns.map(c => [c.key, c.sort]));
-  const sortedItems = sortRows(items, sortState, sortFns, state);
+
+  const itemsFiltrados = searchTerm
+    ? items.filter(item => (item.nome || "").toLowerCase().includes(searchTerm.toLowerCase()))
+    : items;
+  const sortedItems = sortRows(itemsFiltrados, sortState, sortFns, state);
 
   const rows = sortedItems.map(item => `
     <tr class="clickable" data-id="${item.id}">
       ${visibleCols.map(c => `<td>${c.render(item, state)}</td>`).join("")}
     </tr>
   `).join("");
+
+  const emptyMsg = searchTerm
+    ? `Nenhum(a) ${opts.singular.toLowerCase()} encontrado(a) para "${escapeHtml(searchTerm)}".`
+    : `Nenhum(a) ${opts.singular.toLowerCase()} cadastrado(a) ainda.`;
 
   root.innerHTML = `
     <div class="topbar">
@@ -212,17 +230,26 @@ function renderCrudView(root, opts, state){
         <button class="btn btn-primary" id="btn-new">+ Novo(a) ${opts.singular}</button>
       </div>
     </div>
+    <div class="field" style="max-width:320px; margin-bottom:16px;">
+      <label>Buscar por nome</label>
+      <input type="text" id="input-busca" placeholder="Digite pra filtrar…" value="${escapeHtml(searchTerm)}">
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr>${visibleCols.map(c => sortableTh(c.label, c.key, sortState)).join("")}</tr></thead>
         <tbody>
-          ${rows || `<tr class="empty-row"><td colspan="${visibleCols.length}">Nenhum(a) ${opts.singular.toLowerCase()} cadastrado(a) ainda.</td></tr>`}
+          ${rows || `<tr class="empty-row"><td colspan="${visibleCols.length}">${emptyMsg}</td></tr>`}
         </tbody>
       </table>
     </div>
   `;
 
   wireSortableHeaders(root, sortState, () => renderCrudView(root, opts, state));
+
+  $("#input-busca", root)?.addEventListener("input", (e) => {
+    searchStates[opts.collectionName] = e.target.value;
+    reRenderKeepingFocus(root, () => renderCrudView(root, opts, state));
+  });
 
   $("#btn-new").addEventListener("click", () => openCrudForm(opts, null));
   $("#btn-edit-cols")?.addEventListener("click", () => openColumnEditor(opts, () => renderCrudView(root, opts, state)));

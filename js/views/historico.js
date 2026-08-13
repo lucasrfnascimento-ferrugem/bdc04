@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, formatDate, formatDateLong, openModal, closeModal, fmt1, avg, sortRows, sortableTh, wireSortableHeaders } from "../utils.js";
+import { $, $$, escapeHtml, formatDate, formatDateLong, openModal, closeModal, fmt1, avg, sortRows, sortableTh, wireSortableHeaders, reRenderKeepingFocus } from "../utils.js";
 import { resultadoJogo, normalizeEscalacao, notasDoAtletaNoJogo, jogosRealizados, GOL_CONTRA_ID } from "../stats.js";
 import { getFiltroPeriodo, setFiltroPeriodo, filtrarPorPeriodo, anosDisponiveis, MESES } from "../filters.js";
 
@@ -16,15 +16,21 @@ const RESULTADO_ORDEM = { vitoria: 2, empate: 1, derrota: 0 };
 const ORDEM_POSICAO = { "Goleiro": 0, "Zagueiro": 1, "Lateral": 2, "Volante": 3, "Meia": 4, "Atacante": 5 };
 
 const sortState = { key: null, dir: "asc" };
+let searchHistorico = "";
 
 export function renderHistorico(root, state){
   const filtro = getFiltroPeriodo();
   const todosRealizados = [...jogosRealizados(state.jogos)].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
   const anos = anosDisponiveis(todosRealizados);
-  const realizados = filtrarPorPeriodo(todosRealizados, filtro);
+  const doPeriodo = filtrarPorPeriodo(todosRealizados, filtro);
 
   const nomeAdv = id => state.adversarios.find(a => a.id === id)?.nome || "?";
   const nomeCampo = id => state.campos.find(c => c.id === id)?.nome || "?";
+
+  const termo = searchHistorico.toLowerCase();
+  const realizados = termo
+    ? doPeriodo.filter(j => nomeAdv(j.adversarioId).toLowerCase().includes(termo) || nomeCampo(j.campoId).toLowerCase().includes(termo))
+    : doPeriodo;
 
   const sortFns = {
     data: j => j.data || "",
@@ -52,7 +58,7 @@ export function renderHistorico(root, state){
       <div><div class="eyebrow">Visão geral</div><h1>Histórico</h1></div>
     </div>
 
-    <div class="form-grid" style="margin-bottom:20px; max-width:460px;">
+    <div class="form-grid" style="margin-bottom:20px; max-width:680px;">
       <div class="field">
         <label>Ano</label>
         <select id="filtro-ano">
@@ -70,6 +76,10 @@ export function renderHistorico(root, state){
           }).join("")}
         </select>
       </div>
+      <div class="field">
+        <label>Buscar por adversário/campo</label>
+        <input type="text" id="input-busca" placeholder="Digite pra filtrar…" value="${escapeHtml(searchHistorico)}">
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -81,12 +91,17 @@ export function renderHistorico(root, state){
           ${sortableTh("Placar", "placar", sortState)}
           ${sortableTh("Resultado", "resultado", sortState)}
         </tr></thead>
-        <tbody>${rows || `<tr class="empty-row"><td colspan="5">Nenhuma partida realizada para o período selecionado.</td></tr>`}</tbody>
+        <tbody>${rows || `<tr class="empty-row"><td colspan="5">${termo ? `Nenhuma partida encontrada para "${escapeHtml(searchHistorico)}".` : "Nenhuma partida realizada para o período selecionado."}</td></tr>`}</tbody>
       </table>
     </div>
   `;
 
   wireSortableHeaders(root, sortState, () => renderHistorico(root, state));
+
+  $("#input-busca", root)?.addEventListener("input", (e) => {
+    searchHistorico = e.target.value;
+    reRenderKeepingFocus(root, () => renderHistorico(root, state));
+  });
 
   $$("tbody tr[data-id]", root).forEach(tr => {
     tr.addEventListener("click", () => {
