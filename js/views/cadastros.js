@@ -323,7 +323,7 @@ export function renderAtletas(root, state){
     // entram na tabela por padrão (default:false) — o usuário liga essas
     // colunas pelo botão "Editar colunas" se quiser vê-las.
     columns: [
-      { key: "numero", label: "#", render: a => `<span class="pill-num">${a.numero ?? "—"}</span>`, sort: a => a.numero ?? -1, default: true },
+      { key: "numero", label: "#", render: a => `<span class="pill-num">${a.numero ?? "—"}</span>`, sort: a => a.numero ?? null, default: true },
       { key: "nome", label: "Nome", render: a => `<strong>${escapeHtml(a.nome)}</strong>`, sort: a => (a.nome || "").toLowerCase(), default: true },
       { key: "nomeCompleto", label: "Nome completo", render: a => escapeHtml(a.nomeCompleto || "—"), sort: a => (a.nomeCompleto || "").toLowerCase(), default: false },
       { key: "telefone", label: "Telefone", render: a => escapeHtml(a.telefone || "—"), sort: a => a.telefone || "", default: false },
