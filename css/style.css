@@ -301,13 +301,19 @@ tbody tr.clickable{cursor:pointer;}
 .sumula-meta{grid-column:1/-1; display:flex; justify-content:space-between; padding:10px 20px; background:rgba(0,0,0,.15); font-size:11px; color:rgba(255,255,255,.65); flex-wrap:wrap; gap:6px;}
 
 .sumula-list{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:22px;}
-@media (max-width:640px){.sumula-list{grid-template-columns:1fr;}}
 
 .dashboard-grid-3{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; margin-bottom:22px;}
 .sumula-list h4{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:8px;}
 .event-row{display:flex; align-items:center; gap:8px; padding:7px 0; font-size:13.5px; border-bottom:1px solid var(--line);}
 .event-row:last-child{border-bottom:none;}
 .event-min{font-family:var(--font-mono); color:var(--accent); font-weight:700; font-size:12px; width:34px;}
+
+/* Nome + posição + nota, lado a lado dentro de cada linha da escalação
+   (súmula). O nome trunca com reticências se não couber; posição e nota
+   ficam fixas na largura pra alinhar bem mesmo em 2 colunas no mobile. */
+.ev-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ev-pos{color:var(--ink-faint); font-size:10.5px; flex-shrink:0;}
+.ev-nota{font-family:var(--font-mono); font-weight:700; color:var(--accent); font-size:12px; flex-shrink:0; min-width:26px; text-align:right;}
 
 /* ==========================================================================
    Player picker (escalação)
@@ -439,6 +445,15 @@ tbody tr.clickable{cursor:pointer;}
   main#view-root{margin-left:0; padding:70px 16px calc(84px + env(safe-area-inset-bottom, 0px));}
   .sumula{grid-template-columns:1fr auto 1fr;}
   .sumula-side .score{font-size:34px;}
+
+  /* Súmula (Histórico): mantém escalação inicial e final lado a lado mesmo
+     no mobile, só mais compactas — assim dá pra ver as duas de uma vez, sem
+     precisar rolar de uma pra outra. */
+  .sumula-list{gap:10px;}
+  .sumula-list h4{font-size:10.5px; margin-bottom:5px;}
+  .sumula-list .event-row{padding:5px 0; font-size:11.5px; gap:4px;}
+  .sumula-list .ev-pos{font-size:9.5px;}
+  .sumula-list .ev-nota{font-size:11px; min-width:22px;}
 
   /* Filtros (Ano/Mês/Formação etc.) mais estreitos no mobile, pra 2-3
      seletores caberem lado a lado sem cortar nenhum campo. */

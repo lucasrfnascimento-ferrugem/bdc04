@@ -41,11 +41,11 @@ const FORMATIONS = {
 };
 
 // Abreviações usadas no campo (mais legíveis no espaço apertado dos "dots" de jogador).
-const POSICAO_ABREV = {
+export const POSICAO_ABREV = {
   "Goleiro": "GOL", "Zagueiro": "ZAG", "Lateral": "LAT",
   "Volante": "VOL", "Meia": "MEI", "Atacante": "ATA",
 };
-const abrevPosicao = (pos) => POSICAO_ABREV[pos] || pos;
+export const abrevPosicao = (pos) => POSICAO_ABREV[pos] || pos;
 
 let formacaoAtual = "4-3-3";
 let filtroAno = "";
@@ -183,6 +183,22 @@ export function renderEscalacaoIdeal(root, state){
       titulares.push(c);
       usados.add(c.atleta.id);
     }
+
+    // Ainda sobraram vagas nessa linha? Preenche com jogadores selecionados
+    // que não têm avaliação nenhuma (sem votação), usando a posição cadastrada
+    // no elenco pra decidir se encaixam nessa linha — em vez de deixar "vaga
+    // em aberto" quando na verdade tem gente disponível pra posição.
+    if (titulares.length < linha.slots){
+      const semVotacao = atletasConsiderados
+        .filter(a => !usados.has(a.id) && linha.positions.includes(a.posicao))
+        .sort((a, b) => (a.numero ?? 999) - (b.numero ?? 999) || a.nome.localeCompare(b.nome));
+      for (const atleta of semVotacao){
+        if (titulares.length >= linha.slots) break;
+        titulares.push({ atleta, posicaoJogada: atleta.posicao, media: null, qtd: 0 });
+        usados.add(atleta.id);
+      }
+    }
+
     return { linha, titulares };
   });
 
