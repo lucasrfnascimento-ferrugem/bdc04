@@ -59,7 +59,7 @@ export function renderAvaliacao(root, state){
       ` : `
         <div class="card card-pad">
           <div class="card-title">Notas — vs ${nomeAdv(jogo.adversarioId)} (${formatDate(jogo.data)})</div>
-          <div class="card-sub">Nota de 1 a 10 de cada atleta que entrou em campo, segundo ${escapeHtml(votanteAtual?.nome || "")}.</div>
+          <div class="card-sub">Nota de 0 a 10 (incrementos de 0,5) de cada atleta que entrou em campo, segundo ${escapeHtml(votanteAtual?.nome || "")}.</div>
           ${jogadores.map(a => {
             const posicaoJogada = posicaoJogadaNoJogo(jogo, a.id) || a.posicao || "—";
             const notaAtual = notaDoVotanteNoJogo(jogo, a.id, votanteId);
@@ -95,8 +95,8 @@ export function renderAvaliacao(root, state){
     const map = { ...(jogo.avaliacoesJogadores || {}) };
     jogadores.forEach(a => {
       const hidden = $(`input[data-rating="av-${a.id}"]`, root);
-      const val = hidden?.value ? Number(hidden.value) : null;
-      if (!val) return;
+      const val = hidden?.value !== "" && hidden?.value != null ? Number(hidden.value) : null;
+      if (val === null) return;
       const atual = map[a.id];
       if (atual && typeof atual.nota === "number"){
         // Formato antigo (nota única, sem votante identificado) — preserva a

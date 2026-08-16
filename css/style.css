@@ -247,12 +247,15 @@ tbody tr.clickable{cursor:pointer;}
 .field-hint{font-size:11px; color:var(--ink-faint);}
 .form-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:18px; padding-top:16px; border-top:1px solid var(--line);}
 
-.rating-input{display:flex; gap:4px;}
-.rating-input button{
-  width:30px; height:30px; border-radius:6px; border:1px solid var(--line); background:var(--card);
-  font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--ink-soft);
+.rating-input{display:flex; align-items:center; gap:4px;}
+.rating-input select{
+  height:34px; border-radius:6px; border:1px solid var(--line); background:var(--card);
+  font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--ink); padding:0 6px;
 }
-.rating-input button.active{background:var(--gold); border-color:var(--gold); color:var(--gold-ink);}
+.rating-input select.rating-int{width:52px;}
+.rating-input select.rating-dec{width:46px;}
+.rating-input select.rating-dec:disabled{opacity:.4;}
+.rating-input .rating-sep{font-family:var(--font-mono); font-weight:700; color:var(--ink-soft); font-size:14px;}
 
 /* ==========================================================================
    Modal / drawer

@@ -128,26 +128,60 @@ export function confirmAction(msg, opts = {}){
 }
 
 // ----------------------------------------------------------------------------
-// Widget de nota (1 a 10) — usado nas telas de avaliação (jogo e avaliação de jogadores)
+// Widget de nota (0 a 10, com incrementos de 0,5) — usado nas telas de
+// avaliação (jogo e avaliação de jogadores). Dois selects: parte inteira
+// (0 a 10) e parte decimal (0 ou 5, ou seja ",0" ou ",5"), combinados num
+// input escondido com o valor final (ex: 7 + 5 → "7.5") — é esse hidden que
+// o resto do código (salvar avaliação) já lê, sem precisar mudar nada lá.
 // ----------------------------------------------------------------------------
 export function ratingWidgetHtml(name, value){
-  let btns = "";
-  for (let i = 1; i <= 10; i++){
-    btns += `<button type="button" class="rating-btn" data-val="${i}">${i}</button>`;
+  const hasValue = typeof value === "number" && !isNaN(value);
+  const intPart = hasValue ? Math.floor(value) : null;
+  const decPart = hasValue ? Math.round((value - Math.floor(value)) * 10) : 0;
+
+  let intOptions = `<option value="" ${!hasValue ? "selected" : ""}>–</option>`;
+  for (let i = 0; i <= 10; i++){
+    intOptions += `<option value="${i}" ${intPart === i ? "selected" : ""}>${i}</option>`;
   }
-  return `<div class="rating-input" data-name="${name}"><input type="hidden" data-rating="${name}" value="${value ?? ""}">${btns}</div>`;
+
+  return `
+    <div class="rating-input" data-name="${name}">
+      <input type="hidden" data-rating="${name}" value="${hasValue ? value : ""}">
+      <select class="rating-int" data-rating-int="${name}" aria-label="Nota (parte inteira)">${intOptions}</select>
+      <span class="rating-sep">,</span>
+      <select class="rating-dec" data-rating-dec="${name}" aria-label="Nota (casa decimal)" ${intPart === 10 ? "disabled" : ""}>
+        <option value="0" ${decPart === 0 ? "selected" : ""}>0</option>
+        <option value="5" ${decPart === 5 ? "selected" : ""}>5</option>
+      </select>
+    </div>`;
 }
 
 export function wireRatingWidgets(root){
   $$(".rating-input", root).forEach(wrap => {
     const hidden = wrap.querySelector("input[type=hidden]");
-    $$(".rating-btn", wrap).forEach(btn => {
-      if (btn.dataset.val === String(hidden.value)) btn.classList.add("active");
-      btn.addEventListener("click", () => {
-        hidden.value = btn.dataset.val;
-        $$(".rating-btn", wrap).forEach(b => b.classList.toggle("active", b === btn));
-      });
-    });
+    const selInt = wrap.querySelector(".rating-int");
+    const selDec = wrap.querySelector(".rating-dec");
+
+    const recompute = () => {
+      if (selInt.value === ""){
+        hidden.value = "";
+        return;
+      }
+      const intVal = Number(selInt.value);
+      // Nota 10 não tem ",5" (ficaria 10,5, fora da escala) — trava a casa
+      // decimal em 0 quando a parte inteira é 10.
+      if (intVal >= 10){
+        selDec.value = "0";
+        selDec.disabled = true;
+      } else {
+        selDec.disabled = false;
+      }
+      const decVal = Number(selDec.value);
+      hidden.value = String(intVal + decVal / 10);
+    };
+
+    selInt.addEventListener("change", recompute);
+    selDec.addEventListener("change", recompute);
   });
 }
 

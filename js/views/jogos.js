@@ -456,11 +456,11 @@ function wireAvaliacoesPanel(root, jogo){
 
   $("#btn-save-campo", panel)?.addEventListener("click", async (e) => {
     const hidden = $(`input[data-rating="campo"]`, panel);
-    const nota = hidden?.value ? Number(hidden.value) : null;
+    const nota = hidden?.value !== "" && hidden?.value != null ? Number(hidden.value) : null;
     const obs = $("#obs-campo", panel).value;
     e.target.disabled = true;
     try{
-      await updateJogoField(jogo.id, { avaliacaoCampo: nota ? { nota, obs } : null });
+      await updateJogoField(jogo.id, { avaliacaoCampo: nota !== null ? { nota, obs } : null });
       toast("Avaliação do campo salva.", "ok");
     }catch(err){ toast("Erro: " + err.message, "err"); }
     e.target.disabled = false;
@@ -468,11 +468,11 @@ function wireAvaliacoesPanel(root, jogo){
 
   $("#btn-save-adversario", panel)?.addEventListener("click", async (e) => {
     const hidden = $(`input[data-rating="adversario"]`, panel);
-    const nota = hidden?.value ? Number(hidden.value) : null;
+    const nota = hidden?.value !== "" && hidden?.value != null ? Number(hidden.value) : null;
     const obs = $("#obs-adversario", panel).value;
     e.target.disabled = true;
     try{
-      await updateJogoField(jogo.id, { avaliacaoAdversario: nota ? { nota, obs } : null });
+      await updateJogoField(jogo.id, { avaliacaoAdversario: nota !== null ? { nota, obs } : null });
       toast("Avaliação do adversário salva.", "ok");
     }catch(err){ toast("Erro: " + err.message, "err"); }
     e.target.disabled = false;
