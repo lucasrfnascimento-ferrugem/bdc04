@@ -16,6 +16,8 @@ export function renderAvaliacao(root, state){
 
   const jogo = partidas.find(j => j.id === jogoId) || null;
   const jogadores = jogo ? jogadoresDaPartida(jogo, state.atletas) : [];
+  // Ninguém avalia a si próprio — some da lista quem está votando.
+  const jogadoresParaAvaliar = jogadores.filter(a => a.id !== votanteId);
   const nomeAdv = id => escapeHtml(state.adversarios.find(a => a.id === id)?.nome || "?");
   const votanteAtual = votantes.find(v => v.id === votanteId);
 
@@ -56,11 +58,13 @@ export function renderAvaliacao(root, state){
         <div class="empty-state"><p>Selecione quem está votando e a partida para ver os jogadores escalados.</p></div>
       ` : jogadores.length === 0 ? `
         <div class="empty-state"><h3>Sem escalação</h3><p>Essa partida ainda não tem jogadores na escalação inicial ou final.</p></div>
+      ` : jogadoresParaAvaliar.length === 0 ? `
+        <div class="empty-state"><h3>Nada pra avaliar aqui</h3><p>Você é o único jogador escalado nessa partida, e não é possível avaliar a si próprio.</p></div>
       ` : `
         <div class="card card-pad">
           <div class="card-title">Notas — vs ${nomeAdv(jogo.adversarioId)} (${formatDate(jogo.data)})</div>
-          <div class="card-sub">Nota de 0 a 10 (incrementos de 0,5) de cada atleta que entrou em campo, segundo ${escapeHtml(votanteAtual?.nome || "")}.</div>
-          ${jogadores.map(a => {
+          <div class="card-sub">Nota de 0 a 10 (incrementos de 0,5) de cada atleta que entrou em campo, segundo ${escapeHtml(votanteAtual?.nome || "")}. Você não aparece na lista — não é possível avaliar a si próprio.</div>
+          ${jogadoresParaAvaliar.map(a => {
             const posicaoJogada = posicaoJogadaNoJogo(jogo, a.id) || a.posicao || "—";
             const notaAtual = notaDoVotanteNoJogo(jogo, a.id, votanteId);
             const notasGerais = notasDoAtletaNoJogo(jogo, a.id);
@@ -87,13 +91,13 @@ export function renderAvaliacao(root, state){
   $("#sel-votante", root)?.addEventListener("change", (e) => { votanteId = e.target.value; renderAvaliacao(root, state); });
   $("#sel-jogo", root)?.addEventListener("change", (e) => { jogoId = e.target.value; renderAvaliacao(root, state); });
 
-  if (!votanteId || !jogoId || !jogo || jogadores.length === 0) return;
+  if (!votanteId || !jogoId || !jogo || jogadoresParaAvaliar.length === 0) return;
 
   wireRatingWidgets(root);
 
   $("#btn-save-avaliacao", root)?.addEventListener("click", async (e) => {
     const map = { ...(jogo.avaliacoesJogadores || {}) };
-    jogadores.forEach(a => {
+    jogadoresParaAvaliar.forEach(a => {
       const hidden = $(`input[data-rating="av-${a.id}"]`, root);
       const val = hidden?.value !== "" && hidden?.value != null ? Number(hidden.value) : null;
       if (val === null) return;
