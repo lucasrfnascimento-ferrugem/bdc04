@@ -89,11 +89,11 @@ export function contagemJogosPorAtleta(jogos){
 // Estatísticas combinadas de cada atleta (jogos, gols, assistências, nota
 // média), calculadas a partir de um conjunto de jogos já filtrado (por
 // período ou por partida específica) — usado na tela de Ranking.
-export function statsPorAtleta(atletas, jogos){
+export function statsPorAtleta(atletas, jogos, votanteIds = null){
   const gaMap = golsEAssistenciasPorAtleta(jogos);
   const jogosMap = contagemJogosPorAtleta(jogos);
   return atletas.map(a => {
-    const { media, qtd } = mediaNotaAtleta(a.id, jogos);
+    const { media, qtd } = mediaNotaAtleta(a.id, jogos, votanteIds);
     return {
       atleta: a,
       jogosCount: jogosMap[a.id] || 0,
@@ -133,12 +133,21 @@ export function posicaoJogadaNoJogo(jogo, atletaId){
 // lido normalmente, só sem separar por votante.
 // ----------------------------------------------------------------------------
 
-// Todas as notas atribuídas a um atleta numa partida (de todos os votantes).
-export function notasDoAtletaNoJogo(jogo, atletaId){
+// Todas as notas atribuídas a um atleta numa partida. Por padrão conta os
+// votos de todo mundo; passando `votanteIds` (array de ids), conta só os
+// votos de quem está nessa lista — usado no filtro "quem votou" do Ranking.
+export function notasDoAtletaNoJogo(jogo, atletaId, votanteIds = null){
   const entry = jogo?.avaliacoesJogadores?.[atletaId];
   if (!entry) return [];
-  if (typeof entry.nota === "number") return [entry.nota]; // formato antigo (nota única)
-  return Object.values(entry).map(v => v?.nota).filter(n => typeof n === "number");
+  if (typeof entry.nota === "number"){
+    // Formato antigo (nota única, sem votante identificado) — se um filtro
+    // de votante específico foi pedido, não dá pra saber quem votou, então
+    // essa nota fica de fora (evita contar um voto "sem dono" como se fosse
+    // de alguém que a pessoa selecionou).
+    return votanteIds && votanteIds.length > 0 ? [] : [entry.nota];
+  }
+  const chaves = votanteIds && votanteIds.length > 0 ? votanteIds : Object.keys(entry);
+  return chaves.map(id => entry[id]?.nota).filter(n => typeof n === "number");
 }
 
 // Nota que um votante específico deu a um atleta numa partida (ou null, se ele
@@ -159,9 +168,9 @@ export function mediaNotaJogadoresNoJogo(jogo){
   return { media: avg(todas), qtd: todas.length };
 }
 
-export function mediaNotaAtleta(atletaId, jogos){
+export function mediaNotaAtleta(atletaId, jogos, votanteIds = null){
   const notas = [];
-  jogosRealizados(jogos).forEach(j => notas.push(...notasDoAtletaNoJogo(j, atletaId)));
+  jogosRealizados(jogos).forEach(j => notas.push(...notasDoAtletaNoJogo(j, atletaId, votanteIds)));
   return { media: avg(notas), qtd: notas.length };
 }
 

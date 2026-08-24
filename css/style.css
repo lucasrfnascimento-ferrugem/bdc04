@@ -285,6 +285,16 @@ tbody tr.clickable{cursor:pointer;}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
 
+/* Chips de seleção múltipla (ex: filtro "quem votou" no Ranking) — visual de
+   pílula pra deixar claro que dá pra marcar mais de um, diferente das abas
+   (.tab-btn) que só permitem uma opção ativa por vez. */
+.votante-btn{
+  padding:7px 13px; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+  background:var(--card); border:1px solid var(--line); border-radius:20px;
+}
+.votante-btn:hover{background:var(--pitch-light);}
+.votante-btn.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+
 /* ==========================================================================
    Súmula / scoreboard ticket (signature element)
    ========================================================================== */

@@ -13,6 +13,7 @@ import { renderAvaliacao } from "./views/avaliacao.js";
 const state = {
   adversarios: [], campos: [], atletas: [], jogos: [],
   loaded: { adversarios: false, campos: false, atletas: false, jogos: false },
+  isAuthorized: false,
 };
 
 let currentUser = null;
@@ -125,6 +126,11 @@ function renderRestricted(root){
 }
 
 function render(){
+  // Mantém o state sempre com o status de autenticação em dia — usado por
+  // telas públicas (ex: Ranking) que liberam algum recurso extra só pra
+  // quem está logado com uma conta Google autorizada.
+  state.isAuthorized = isAuthorized();
+
   if (!allLoaded()){
     $("#view-root").innerHTML = `<div class="loader">Carregando dados…</div>`;
     return;

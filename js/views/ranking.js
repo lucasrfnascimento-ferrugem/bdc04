@@ -5,6 +5,10 @@ let activeMetric = "ga"; // jogos | gols | assistencias | ga | nota
 let filtroAno = "";
 let filtroMes = "";
 let filtroPartida = "";
+// Filtro "quem votou" (nota média) — ids dos votantes selecionados. Vazio
+// conta o voto de todo mundo (comportamento padrão, igual antes desse
+// filtro existir). Só aparece pra quem está logado com conta autorizada.
+let votantesFiltro = [];
 
 const METRICAS = [
   { key: "jogos", label: "Qtde. de jogos" },
@@ -44,7 +48,7 @@ function filtrarPorMetrica(lista, metrica){
 // Gera uma imagem (PNG) da tabela de ranking atual (já filtrada/ordenada) e
 // compartilha (Web Share API) ou baixa o arquivo — pra mandar rapidinho no
 // grupo do WhatsApp. Mesmo padrão usado no botão de compartilhar da Escalação ideal.
-async function compartilharImagemRanking(theadHtml, tbodyHtml, metricLabel, periodoLabel){
+async function compartilharImagemRanking(theadHtml, tbodyHtml, metricLabel, periodoLabel, votantesLabel){
   if (typeof html2canvas !== "function"){
     toast("Não foi possível gerar a imagem (recurso indisponível).", "err");
     return;
@@ -56,7 +60,7 @@ async function compartilharImagemRanking(theadHtml, tbodyHtml, metricLabel, peri
       <img src="assets/logo-bomdcopus.png" crossorigin="anonymous" style="width:38px; height:38px; border-radius:50%; object-fit:cover;">
       <div>
         <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; color:#141414; line-height:1;">BOM D' COPUS</div>
-        <div style="font-size:11px; color:#5B6470; margin-top:2px;">Ranking — ${escapeHtml(metricLabel)} · ${escapeHtml(periodoLabel)}</div>
+        <div style="font-size:11px; color:#5B6470; margin-top:2px;">Ranking — ${escapeHtml(metricLabel)} · ${escapeHtml(periodoLabel)}${votantesLabel ? ` · Nota de: ${escapeHtml(votantesLabel)}` : ""}</div>
       </div>
     </div>
     <table style="width:100%; border-collapse:collapse;">
@@ -112,6 +116,13 @@ export function renderRanking(root, state){
 
   const nomeAdv = id => state.adversarios.find(a => a.id === id)?.nome || "?";
 
+  // Filtro "quem votou" (nota média) — só disponível pra quem está logado
+  // com conta Google autorizada. Descarta seleções de votantes que não
+  // existem mais (ex: perdeu o direito a voto).
+  const votantes = state.isAuthorized ? state.atletas.filter(a => a.podeVotar) : [];
+  votantesFiltro = votantesFiltro.filter(id => votantes.some(v => v.id === id));
+  const votanteIds = votantesFiltro.length > 0 ? votantesFiltro : null;
+
   let jogosFiltrados;
   if (filtroPartida){
     jogosFiltrados = realizados.filter(j => j.id === filtroPartida);
@@ -125,7 +136,7 @@ export function renderRanking(root, state){
     });
   }
 
-  const stats = statsPorAtleta(state.atletas.filter(ehJogador), jogosFiltrados);
+  const stats = statsPorAtleta(state.atletas.filter(ehJogador), jogosFiltrados, votanteIds);
   const listaFinal = ordenarPorMetrica(filtrarPorMetrica(stats, activeMetric), activeMetric);
 
   const theadRowHtml = `<tr><th>#</th><th>Atleta</th><th>Posição</th><th>Jogos</th><th>Gols</th><th>Assist.</th><th>G+A</th><th>Nota média</th></tr>`;
@@ -183,6 +194,17 @@ export function renderRanking(root, state){
       </div>
     </div>
 
+    ${votantes.length > 0 ? `
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:8px;">
+          Quem votou (nota média) <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-faint);">— ninguém selecionado conta o voto de todo mundo</span>
+        </label>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${votantes.map(v => `<button class="votante-btn ${votantesFiltro.includes(v.id) ? "active" : ""}" data-votante="${v.id}" type="button">${escapeHtml(v.nome)}</button>`).join("")}
+        </div>
+      </div>
+    ` : ""}
+
     <div class="table-wrap">
       <table>
         <thead>${theadRowHtml}</thead>
@@ -203,6 +225,14 @@ export function renderRanking(root, state){
   $("#filtro-mes", root)?.addEventListener("change", (e) => { filtroMes = e.target.value; reRenderKeepingFocus(root, () => renderRanking(root, state)); });
   $("#filtro-partida", root)?.addEventListener("change", (e) => { filtroPartida = e.target.value; reRenderKeepingFocus(root, () => renderRanking(root, state)); });
 
+  $$(".votante-btn", root).forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.votante;
+      votantesFiltro = votantesFiltro.includes(id) ? votantesFiltro.filter(x => x !== id) : [...votantesFiltro, id];
+      reRenderKeepingFocus(root, () => renderRanking(root, state));
+    });
+  });
+
   $("#btn-print-ranking", root)?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
@@ -215,7 +245,8 @@ export function renderRanking(root, state){
           })()
         : [filtroMes ? MESES[Number(filtroMes) - 1] : null, filtroAno].filter(Boolean).join("/") || "Todos os períodos";
       const metricLabel = METRICAS.find(m => m.key === activeMetric)?.label || "Ranking";
-      await compartilharImagemRanking(theadRowHtml, rows || `<tr><td colspan="8" style="text-align:center; color:#999; padding:20px;">Nenhum dado para os filtros selecionados.</td></tr>`, metricLabel, periodoLabel);
+      const votantesLabel = votanteIds ? votantes.filter(v => votanteIds.includes(v.id)).map(v => v.nome).join(", ") : "";
+      await compartilharImagemRanking(theadRowHtml, rows || `<tr><td colspan="8" style="text-align:center; color:#999; padding:20px;">Nenhum dado para os filtros selecionados.</td></tr>`, metricLabel, periodoLabel, votantesLabel);
     } finally {
       btn.disabled = false;
     }
