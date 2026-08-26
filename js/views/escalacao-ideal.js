@@ -202,6 +202,32 @@ export function renderEscalacaoIdeal(root, state){
     return { linha, titulares };
   });
 
+  // Terceira e última tentativa: se mesmo depois das duas regras acima ainda
+  // sobrar vaga em alguma linha (ex: sobrou um jogador cadastrado numa
+  // posição que essa formação nem usa, tipo um Zagueiro quando as posições
+  // de defesa já couberam todas), preenche com quem ainda não entrou no
+  // time, na ordem: maior nota geral primeiro (joga fora de posição, mas
+  // prioriza o melhor jogador disponível), depois número da camisa. Só fica
+  // "Vaga em aberto" se realmente não sobrar mais ninguém selecionado — ou
+  // seja, você escolheu menos jogadores do que vagas tem a formação (11).
+  const sobrando = atletasConsiderados
+    .filter(a => !usados.has(a.id))
+    .sort((a, b) => {
+      const mediaA = mediaNotaAtleta(a.id, jogosFiltrados).media;
+      const mediaB = mediaNotaAtleta(b.id, jogosFiltrados).media;
+      if (mediaA !== null && mediaB !== null) return mediaB - mediaA;
+      if (mediaA !== null) return -1;
+      if (mediaB !== null) return 1;
+      return (a.numero ?? 999) - (b.numero ?? 999) || a.nome.localeCompare(b.nome);
+    });
+  linhasResolvidas.forEach(({ linha, titulares }) => {
+    while (titulares.length < linha.slots && sobrando.length > 0){
+      const atleta = sobrando.shift();
+      titulares.push({ atleta, posicaoJogada: atleta.posicao, media: null, qtd: 0 });
+      usados.add(atleta.id);
+    }
+  });
+
   const temDados = Object.keys(notasPos).length > 0;
 
   // O arranjo manual (ordem) guarda 1 entrada por vaga do campo — se ainda
@@ -268,7 +294,9 @@ export function renderEscalacaoIdeal(root, state){
     </div>
     <p style="font-size:13px; color:var(--ink-soft); margin:-14px 0 20px; max-width:640px;">
       Calculada a partir da nota média de cada atleta nas avaliações pós-jogo, agrupada pela posição em que
-      ele efetivamente jogou em cada partida (não a posição cadastrada no elenco).
+      ele efetivamente jogou em cada partida (não a posição cadastrada no elenco). Sem nota suficiente pra
+      uma posição, usa a posição cadastrada como critério; e, em último caso, preenche com quem sobrar entre
+      os selecionados — só fica vaga em aberto se você selecionar menos de 11 jogadores.
     </p>
 
     <div class="form-grid" style="margin-bottom:20px; max-width:680px;">
