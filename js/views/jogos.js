@@ -137,8 +137,8 @@ export function renderJogosList(root, state){
   root.innerHTML = `
     <div class="topbar">
       <div>
-        <div class="eyebrow">Partidas</div>
-        <h1>Jogos</h1>
+        <div class="eyebrow">Cadastro</div>
+        <h1>Partidas</h1>
       </div>
       <button class="btn btn-primary" id="btn-new-jogo">+ Novo jogo</button>
     </div>
@@ -175,7 +175,7 @@ export function renderJogoDetail(root, state, jogoId){
   const jogo = state.jogos.find(j => j.id === jogoId);
   if (!jogo){
     root.innerHTML = `<div class="empty-state"><h3>Jogo não encontrado</h3><p>Ele pode ter sido excluído.</p>
-      <button class="btn btn-primary" id="btn-back">Voltar para Jogos</button></div>`;
+      <button class="btn btn-primary" id="btn-back">Voltar para Partidas</button></div>`;
     $("#btn-back").addEventListener("click", () => location.hash = "#jogos");
     return;
   }
@@ -186,7 +186,7 @@ export function renderJogoDetail(root, state, jogoId){
   root.innerHTML = `
     <div class="topbar">
       <div>
-        <a href="#jogos" style="font-size:12px; color:var(--pitch); font-weight:600; text-decoration:none;">&larr; Jogos</a>
+        <a href="#jogos" style="font-size:12px; color:var(--pitch); font-weight:600; text-decoration:none;">&larr; Partidas</a>
         <h1 style="margin-top:4px;">Bom D' Copus vs ${escapeHtml(adv?.nome || "?")}</h1>
       </div>
       <div style="display:flex; gap:8px;">

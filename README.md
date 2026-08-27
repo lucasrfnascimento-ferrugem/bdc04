@@ -76,13 +76,25 @@ service cloud.firestore {
     match /atletas_privado/{id} {
       allow read, write: if emailPermitido();
     }
+
+    // Financeiro (lançamentos de entrada/saída/mensalidade) e a configuração
+    // geral (valor da mensalidade) são dados sensíveis — nada de leitura
+    // pública aqui, diferente das coleções acima.
+    match /financeiro/{id} {
+      allow read, write: if emailPermitido();
+    }
+    match /configuracoes/{id} {
+      allow read, write: if emailPermitido();
+    }
   }
 }
 ```
 
 Clique em **Publicar**. Sem isso, as telas de Jogos/Atletas/Adversários/
 Campos ficam com a leitura/escrita liberada para qualquer pessoa, mesmo que
-o app esconda os botões no navegador.
+o app esconda os botões no navegador. `financeiro` e `configuracoes` ficam
+totalmente fechadas (nem leitura pública) — sem publicar essas regras, a
+página Financeiro dá erro de permissão ao tentar salvar.
 
 > ℹ️ As coleções `adversarios`, `campos`, `atletas` e `jogos` ficam com
 > **leitura pública** de propósito — é assim que Dashboard, Ranking,
@@ -148,10 +160,12 @@ js/views/*.js           uma view por tela (dashboard, jogos, cadastros, avaliaca
   Qualquer pessoa com o link consegue abrir e ver os dados. Dashboard e
   Histórico têm filtros de Ano/Mês sincronizados entre si (mudar o período
   numa tela mantém a seleção ao navegar para a outra).
-- **Protegidas (exige login com e-mail autorizado):** Jogos, Atletas,
-  Adversários, Campos e Avaliação. Sem login, esses links somem do menu e, se
-  alguém tentar acessar direto pela URL (`#jogos`, `#atletas`, `#avaliacao`...),
-  o app mostra uma tela de "Acesso restrito" com um botão para entrar com Google.
+- **Protegidas (exige login com e-mail autorizado):** Partidas (antiga
+  "Jogos", agora dentro do hub Cadastros), Atletas, Adversários, Campos,
+  Avaliação e Financeiro. Sem login, esses links somem do menu e, se alguém
+  tentar acessar direto pela URL (`#jogos`, `#atletas`, `#avaliacao`,
+  `#financeiro`...), o app mostra uma tela de "Acesso restrito" com um botão
+  para entrar com Google.
 - No celular, o menu vira uma barra fixa de ícones no rodapé; no desktop
   continua como uma barra lateral.
 
@@ -159,13 +173,15 @@ js/views/*.js           uma view por tela (dashboard, jogos, cadastros, avaliaca
 
 - **`adversarios`**: `{ nome, cidade, observacoes }`
 - **`campos`**: `{ nome, endereco, tipo, observacoes }`
-- **`atletas`**: `{ nome, posicao, numero, ativo, podeVotar, observacoes }` (pública).
+- **`atletas`**: `{ nome, posicao, numero, ativo, podeVotar, pagante, observacoes }` (pública).
   `podeVotar` marca diretores/capitão/técnicos com direito a avaliar jogadores
   na página Avaliação. `posicao` aceita as posições de linha (Goleiro,
   Zagueiro, Lateral, Volante, Meia, Atacante) ou `"Técnico"` — atletas
   marcados como Técnico não entram nas listagens de jogadores (escalação de
   partida, Ranking, Escalação ideal), mas continuam disponíveis para votar
-  na Avaliação se `podeVotar` estiver marcado.
+  na Avaliação se `podeVotar` estiver marcado. `pagante` marca quem entra na
+  lista de mensalidades da página Financeiro (só aparecem lá os atletas com
+  `pagante: true` e `ativo` diferente de `false`).
 - **`atletas_privado`**: `{ cpf, dataNascimento }`, documento com o **mesmo id**
   do atleta correspondente — coleção não pública, só leitura/escrita para
   e-mails autorizados. Ambos os campos são opcionais.
@@ -195,6 +211,21 @@ Tudo relacionado a uma partida fica dentro do próprio documento do jogo —
 mais simples de consultar e de fazer backup/export manual pelo console do
 Firebase, se precisar um dia.
 
+- **`financeiro`**: uma linha por lançamento — `{ tipo, valor, data, descricao,
+  atletaId, mesRef, criadoEm }`. `tipo` é `"entrada"`, `"saida"` ou
+  `"mensalidade"`. Lançamentos de entrada/saída manuais só usam
+  `valor`/`data`/`descricao`; lançamentos de mensalidade (criados ao marcar
+  um jogador como "pago" no mês, na página Financeiro) também preenchem
+  `atletaId` e `mesRef` (`"AAAA-MM"`) e usam um id de documento fixo
+  (`mens_{mesRef}_{atletaId}`), o que torna marcar/desmarcar pago uma
+  operação idempotente — desmarcar simplesmente apaga o documento. O saldo
+  exibido é sempre a soma de todos os lançamentos (entradas e mensalidades
+  somam, saídas subtraem); não existe um "saldo inicial" separado — o saldo
+  de partida é lançado manualmente como uma Entrada.
+- **`configuracoes/geral`**: documento único — `{ valorMensalidade }`. Mudar
+  esse valor só afeta lançamentos de mensalidade futuros; cada lançamento já
+  feito guarda o valor de quando foi pago e não muda retroativamente.
+
 ## Como usar
 
 1. Cadastre primeiro **Adversários**, **Campos** e **Atletas** (marcando
@@ -209,3 +240,8 @@ Firebase, se precisar um dia.
    final de cada jogador é a média de todos os votos recebidos.
 5. As telas **Dashboard**, **Ranking**, **Escalação ideal** e **Histórico**
    são todas calculadas automaticamente a partir desses cadastros.
+6. Na página **Financeiro**, marque `pagante` no cadastro dos atletas que
+   pagam mensalidade, informe o valor da mensalidade, clique nos meses pra
+   marcar quem pagou (isso já lança o valor no saldo) e use os botões de
+   Entrada/Saída para os demais lançamentos (compra de material, aluguel de
+   campo, etc.).

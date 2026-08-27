@@ -294,6 +294,10 @@ export const CATEGORIAS_ATLETA = [...POSICOES, POSICAO_TECNICO];
 export function renderCadastrosHub(root, state){
   const itens = [
     {
+      route: "jogos", label: "Partidas", desc: `${state.jogos.length} registrada(s)`,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>`,
+    },
+    {
       route: "atletas", label: "Atletas", desc: `${state.atletas.length} cadastrado(s)`,
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg>`,
     },
@@ -344,6 +348,7 @@ export function renderAtletas(root, state){
       { key: "dataNascimento", label: "Data de nascimento (opcional)", type: "date", private: true },
       { key: "ativo", label: "Atleta ativo no elenco", type: "checkbox", default: true },
       { key: "podeVotar", label: "Direito a voto (diretor/capitão)", type: "checkbox", default: false },
+      { key: "pagante", label: "Pagante (paga mensalidade)", type: "checkbox", default: false },
       { key: "observacoes", label: "Observações", type: "textarea", span2: true },
     ],
     // "Nome completo" e "Telefone" ficam disponíveis no cadastro mas não
@@ -361,6 +366,9 @@ export function renderAtletas(root, state){
       { key: "votante", label: "Votante", render: a => a.podeVotar
         ? `<span class="badge badge-pending">Vota</span>`
         : `<span style="color:var(--ink-faint);">—</span>`, sort: a => a.podeVotar ? 1 : 0, default: true },
+      { key: "pagante", label: "Pagante", render: a => a.pagante
+        ? `<span class="badge badge-ok">Pagante</span>`
+        : `<span style="color:var(--ink-faint);">—</span>`, sort: a => a.pagante ? 1 : 0, default: false },
       { key: "notaMedia", label: "Nota média", render: (a, state) => {
         const { media, qtd } = mediaNotaAtleta(a.id, state.jogos);
         return media === null ? "—" : `${fmt1(media)} <span style="color:var(--ink-faint); font-size:11px;">(${qtd})</span>`;

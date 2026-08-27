@@ -32,6 +32,26 @@ export async function removeDoc(name, id){
   return deleteDoc(doc(db, name, id));
 }
 
+// Cria (ou sobrescreve) um documento com um id escolhido por quem chama, em
+// vez de deixar o Firestore gerar um id aleatório — usado pra mensalidades
+// (id = mês + atleta), onde marcar/desmarcar "pago" precisa ser uma
+// operação idempotente (criar de novo com o mesmo id só atualiza o valor).
+export async function createDocWithId(name, id, data){
+  return setDoc(doc(db, name, id), { ...data, criadoEm: serverTimestamp() });
+}
+
+// Ouve um único documento em tempo real (diferente de listenCollection, que
+// ouve uma coleção inteira) — usado pra configurações gerais, como o valor
+// atual da mensalidade.
+export function listenDoc(name, id, cb){
+  return onSnapshot(doc(db, name, id), (snap) => {
+    cb(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  }, (err) => {
+    console.error(`Erro ao ouvir ${name}/${id}:`, err);
+    cb(null, err);
+  });
+}
+
 // ----------------------------------------------------------------------------
 // Documentos "privados" (ex: atletas_privado) — mesmo id do documento
 // público correspondente, leitura/escrita restrita a e-mails autorizados

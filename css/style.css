@@ -247,6 +247,29 @@ tbody tr.clickable{cursor:pointer;}
 .field-hint{font-size:11px; color:var(--ink-faint);}
 .form-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:18px; padding-top:16px; border-top:1px solid var(--line);}
 
+/* ==========================================================================
+   Financeiro — saldo em destaque + grid de meses
+   ========================================================================== */
+.saldo-hero{
+  background:var(--pitch-dark); border-radius:var(--radius);
+  padding:24px 26px; color:#fff; position:relative; overflow:hidden; margin-bottom:18px;
+}
+.saldo-hero::after{content:""; position:absolute; inset:0; background:repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 8px); pointer-events:none;}
+.saldo-hero .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.6); font-weight:700; position:relative;}
+.saldo-hero .val{font-family:var(--font-mono); font-size:38px; font-weight:700; margin-top:4px; color:var(--gold); position:relative;}
+.saldo-hero .val.negativo{color:#ff8a80;}
+.saldo-hero > div{position:relative;}
+
+.mes-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-bottom:8px;}
+.mes-tile{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm);
+  padding:12px 14px; text-align:left; cursor:pointer; transition:border-color .1s ease, transform .05s ease;
+}
+.mes-tile:hover{border-color:var(--accent);}
+.mes-tile:active{transform:scale(.98);}
+.mes-tile .mes-nome{font-size:13.5px; font-weight:700; color:var(--ink);}
+.mes-tile .mes-sub{font-size:11.5px; color:var(--ink-faint); margin-top:2px;}
+
 .rating-input{display:flex; align-items:center; gap:4px;}
 .rating-input select{
   height:34px; border-radius:6px; border:1px solid var(--line); background:var(--card);

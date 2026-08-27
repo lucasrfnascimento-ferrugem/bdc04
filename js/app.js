@@ -1,5 +1,5 @@
 import { watchAuth, loginWithGoogle, logout, isEmailAllowed } from "./auth.js";
-import { listenCollection } from "./db.js";
+import { listenCollection, listenDoc } from "./db.js";
 import { $, $$, toast } from "./utils.js";
 
 import { renderDashboard } from "./views/dashboard.js";
@@ -9,10 +9,11 @@ import { renderHistorico } from "./views/historico.js";
 import { renderJogosList, renderJogoDetail } from "./views/jogos.js";
 import { renderAtletas, renderAdversarios, renderCampos, renderCadastrosHub } from "./views/cadastros.js";
 import { renderAvaliacao } from "./views/avaliacao.js";
+import { renderFinanceiro } from "./views/financeiro.js";
 
 const state = {
-  adversarios: [], campos: [], atletas: [], jogos: [],
-  loaded: { adversarios: false, campos: false, atletas: false, jogos: false },
+  adversarios: [], campos: [], atletas: [], jogos: [], financeiro: [], configFinanceiro: null,
+  loaded: { adversarios: false, campos: false, atletas: false, jogos: false, financeiro: false, configFinanceiro: false },
   isAuthorized: false,
 };
 
@@ -43,9 +44,10 @@ const ROUTES = {
   campos: renderCampos,
   avaliacao: renderAvaliacao,
   cadastros: renderCadastrosHub,
+  financeiro: renderFinanceiro,
 };
 
-const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao", "cadastros"]);
+const PROTECTED_ROUTES = new Set(["jogos", "atletas", "adversarios", "campos", "avaliacao", "cadastros", "financeiro"]);
 
 // ----------------------------------------------------------------------------
 // Cache local (localStorage) — mostra a última versão conhecida dos dados na
@@ -73,6 +75,7 @@ function saveCache(){
   try{
     localStorage.setItem(CACHE_KEY, JSON.stringify({
       adversarios: state.adversarios, campos: state.campos, atletas: state.atletas, jogos: state.jogos,
+      financeiro: state.financeiro, configFinanceiro: state.configFinanceiro,
     }));
   }catch(err){
     // localStorage indisponível/cheio — não é crítico, só perde a otimização
@@ -91,6 +94,8 @@ function startListeners(){
   listenCollection("campos", "nome", (items) => { state.campos = items; state.loaded.campos = true; onDataChange(); });
   listenCollection("atletas", "nome", (items) => { state.atletas = items; state.loaded.atletas = true; onDataChange(); });
   listenCollection("jogos", "data", (items) => { state.jogos = items; state.loaded.jogos = true; onDataChange(); });
+  listenCollection("financeiro", "data", (items) => { state.financeiro = items; state.loaded.financeiro = true; onDataChange(); });
+  listenDoc("configuracoes", "geral", (item) => { state.configFinanceiro = item; state.loaded.configFinanceiro = true; onDataChange(); });
 }
 startListeners();
 
@@ -100,7 +105,9 @@ if (cached){
   state.campos = cached.campos || [];
   state.atletas = cached.atletas || [];
   state.jogos = cached.jogos || [];
-  state.loaded = { adversarios: true, campos: true, atletas: true, jogos: true };
+  state.financeiro = cached.financeiro || [];
+  state.configFinanceiro = cached.configFinanceiro || null;
+  state.loaded = { adversarios: true, campos: true, atletas: true, jogos: true, financeiro: true, configFinanceiro: true };
   render();
 }
 
@@ -140,7 +147,7 @@ function render(){
   // "Cadastros" agrupa Atletas/Adversários/Campos num hub só — o botão do
   // menu continua marcado como ativo quando o usuário está em qualquer uma
   // dessas subtelas, não só na tela do hub em si.
-  const CADASTROS_SUBROTAS = new Set(["atletas", "adversarios", "campos"]);
+  const CADASTROS_SUBROTAS = new Set(["atletas", "adversarios", "campos", "jogos"]);
   const routeAtiva = CADASTROS_SUBROTAS.has(route) ? "cadastros" : route;
   $$(".nav-link[data-route]").forEach(a => a.classList.toggle("active", a.dataset.route === routeAtiva));
 
