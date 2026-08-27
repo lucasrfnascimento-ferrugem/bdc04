@@ -51,6 +51,24 @@ function idMensalidade(mesRef, atletaId){
   return `mens_${mesRef}_${atletaId}`;
 }
 
+// Quantos meses passados/atual aparecem direto na tela principal — o
+// restante do histórico (conforme os meses forem se acumulando) fica só no
+// botão "Ver todas". No mobile, 3 é o que cabe lado a lado sem espremer.
+const MESES_VISIVEIS_TELA = 3;
+
+// Monta o "tile" de um mês (nome + quantas mensalidades já foram pagas) —
+// usado tanto na tela principal quanto nos modais de meses futuros/todos.
+function mesTileHtml(mesRef, transacoes, pagantesAtivos){
+  const pagos = pagantesAtivos.filter(a => transacoes.some(
+    t => t.tipo === "mensalidade" && t.mesRef === mesRef && t.atletaId === a.id
+  )).length;
+  return `
+    <button type="button" class="mes-tile" data-mes="${mesRef}">
+      <div class="mes-nome">${mesLabel(mesRef)}</div>
+      <div class="mes-sub">${pagos}/${pagantesAtivos.length} pagas</div>
+    </button>`;
+}
+
 // ----------------------------------------------------------------------------
 // Lançar Entrada / Saída
 // ----------------------------------------------------------------------------
@@ -336,6 +354,32 @@ function openMesesFuturos(state){
 }
 
 // ----------------------------------------------------------------------------
+// Ver todas — a tela principal só mostra os meses mais recentes (pra não
+// espremer no mobile); esse modal lista o histórico completo, desde
+// MES_INICIO até o mês atual, conforme ele for crescendo mês a mês.
+// ----------------------------------------------------------------------------
+function openMesesTodos(state){
+  const transacoes = state.financeiro || [];
+  const pagantesAtivos = (state.atletas || []).filter(a => a.pagante && a.ativo !== false);
+  const todos = mesesEntre(MES_INICIO, mesAtualRef()).reverse();
+  const tilesHtml = todos.map(m => mesTileHtml(m, transacoes, pagantesAtivos)).join("");
+
+  openModal(`
+    <div class="modal-head">
+      <h3>Todos os meses</h3>
+      <button class="modal-close" data-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="mes-grid">${tilesHtml}</div>
+    </div>
+  `);
+  $$("[data-close]").forEach(b => b.addEventListener("click", closeModal));
+  $$(".mes-tile").forEach(btn => {
+    btn.addEventListener("click", () => openMesDetalhe(btn.dataset.mes, state));
+  });
+}
+
+// ----------------------------------------------------------------------------
 // Tela principal
 // ----------------------------------------------------------------------------
 export function renderFinanceiro(root, state){
@@ -348,17 +392,9 @@ export function renderFinanceiro(root, state){
 
   const mesesPassados = mesesEntre(MES_INICIO, mesAtualRef()).reverse();
   const pagantesAtivos = (state.atletas || []).filter(a => a.pagante && a.ativo !== false);
+  const mesesRecentes = mesesPassados.slice(0, MESES_VISIVEIS_TELA);
 
-  const mesesHtml = mesesPassados.map(m => {
-    const pagos = pagantesAtivos.filter(a => transacoes.some(
-      t => t.tipo === "mensalidade" && t.mesRef === m && t.atletaId === a.id
-    )).length;
-    return `
-      <button type="button" class="mes-tile" data-mes="${m}">
-        <div class="mes-nome">${mesLabel(m)}</div>
-        <div class="mes-sub">${pagos}/${pagantesAtivos.length} pagas</div>
-      </button>`;
-  }).join("");
+  const mesesHtml = mesesRecentes.map(m => mesTileHtml(m, transacoes, pagantesAtivos)).join("");
 
   const atletasPorId = Object.fromEntries((state.atletas || []).map(a => [a.id, a]));
   const historicoOrdenado = [...transacoes].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
@@ -410,7 +446,10 @@ export function renderFinanceiro(root, state){
 
     <div class="topbar" style="margin-bottom:12px;">
       <h2 style="font-size:18px; margin:0;">Mensalidades por mês</h2>
-      <button class="btn btn-ghost btn-sm" id="btn-meses-futuros" type="button">Meses futuros</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost btn-sm" id="btn-ver-todos-meses" type="button">Ver todas</button>
+        <button class="btn btn-ghost btn-sm" id="btn-meses-futuros" type="button">Meses futuros</button>
+      </div>
     </div>
     <div class="mes-grid">
       ${mesesHtml || `<p style="color:var(--ink-faint); font-style:italic;">Nenhum mês disponível ainda.</p>`}
@@ -431,6 +470,7 @@ export function renderFinanceiro(root, state){
   $("#btn-saida", root).addEventListener("click", () => openTransacaoForm("saida"));
   $("#btn-editar-mensalidade", root).addEventListener("click", () => openConfigMensalidadeForm(state));
   $("#btn-meses-futuros", root).addEventListener("click", () => openMesesFuturos(state));
+  $("#btn-ver-todos-meses", root).addEventListener("click", () => openMesesTodos(state));
   $$(".mes-tile", root).forEach(btn => btn.addEventListener("click", () => openMesDetalhe(btn.dataset.mes, state)));
   $$(".btn-editar-transacao", root).forEach(btn => {
     btn.addEventListener("click", () => {

@@ -518,6 +518,12 @@ tbody tr.clickable{cursor:pointer;}
      (ex: "Nota média") em vez de forçar a coluna a ficar larga demais. */
   thead th, tbody td{padding:6px 6px; font-size:11px;}
   thead th{white-space:normal; line-height:1.2;}
+
+  /* Financeiro: 3 meses lado a lado mesmo no mobile, em vez de só 1-2. */
+  .mes-grid{grid-template-columns:repeat(3, 1fr); gap:6px;}
+  .mes-tile{padding:8px 6px;}
+  .mes-tile .mes-nome{font-size:11px;}
+  .mes-tile .mes-sub{font-size:9.5px;}
 }
 @media (min-width: 881px){
   .mobile-topbar{display:none;}
