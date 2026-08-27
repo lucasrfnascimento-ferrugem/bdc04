@@ -1,5 +1,5 @@
 import { $, $$, escapeHtml, toast, openModal, closeModal, confirmAction, todayISO, formatDate } from "../utils.js";
-import { createDoc, removeDoc, createDocWithId } from "../db.js";
+import { createDoc, saveDoc, removeDoc, createDocWithId } from "../db.js";
 
 // ============================================================================
 // Financeiro — saldo, lançamentos de entrada/saída, controle de mensalidade
@@ -101,6 +101,65 @@ function openTransacaoForm(tipo){
         descricao: (fd.get("descricao") || "").trim(),
       });
       toast(`${label} lançada.`, "ok");
+      closeModal();
+    }catch(err){
+      console.error(err);
+      toast("Erro ao salvar: " + err.message, "err");
+      btn.disabled = false;
+    }
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Editar uma transação já lançada (data, valor, descrição) — vale pra
+// qualquer tipo (entrada, saída ou mensalidade); o tipo em si não muda.
+// ----------------------------------------------------------------------------
+function openEditTransacaoForm(t){
+  const tipoLabel = t.tipo === "entrada" ? "Entrada" : t.tipo === "saida" ? "Saída" : "Mensalidade";
+  openModal(`
+    <div class="modal-head">
+      <h3>Editar ${tipoLabel}</h3>
+      <button class="modal-close" data-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-editar-transacao">
+        <div class="form-grid">
+          <div class="field">
+            <label>Valor (R$) *</label>
+            <input type="number" name="valor" min="0.01" step="0.01" value="${t.valor ?? ""}" required>
+          </div>
+          <div class="field">
+            <label>Data *</label>
+            <input type="date" name="data" value="${t.data || todayISO()}" required>
+          </div>
+          <div class="field span-2">
+            <label>Descrição</label>
+            <input type="text" name="descricao" value="${escapeHtml(t.descricao || "")}" placeholder="Ex.: compra de bolas, aluguel de campo…">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  `);
+  $$("[data-close]").forEach(b => b.addEventListener("click", closeModal));
+
+  $("#form-editar-transacao").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const valor = Number(fd.get("valor"));
+    if (!valor || valor <= 0){ toast("Informe um valor válido.", "err"); return; }
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try{
+      await saveDoc("financeiro", t.id, {
+        valor,
+        data: fd.get("data") || todayISO(),
+        descricao: (fd.get("descricao") || "").trim(),
+      });
+      toast(`${tipoLabel} atualizada.`, "ok");
       closeModal();
     }catch(err){
       console.error(err);
@@ -317,7 +376,10 @@ export function renderFinanceiro(root, state){
         <td><span class="badge ${tipoBadge}">${tipoLabel}</span></td>
         <td>${escapeHtml(desc)}</td>
         <td style="font-family:var(--font-mono); font-weight:700; ${t.tipo === "saida" ? "color:var(--danger);" : "color:var(--ok);"}">${sinal} ${fmtBRL(t.valor || 0)}</td>
-        <td class="col-actions"><button class="btn btn-ghost btn-sm btn-excluir-transacao" data-id="${t.id}" type="button">Excluir</button></td>
+        <td class="col-actions">
+          <button class="btn btn-ghost btn-sm btn-editar-transacao" data-id="${t.id}" type="button">Editar</button>
+          <button class="btn btn-ghost btn-sm btn-excluir-transacao" data-id="${t.id}" type="button">Excluir</button>
+        </td>
       </tr>`;
   }).join("");
 
@@ -370,6 +432,13 @@ export function renderFinanceiro(root, state){
   $("#btn-editar-mensalidade", root).addEventListener("click", () => openConfigMensalidadeForm(state));
   $("#btn-meses-futuros", root).addEventListener("click", () => openMesesFuturos(state));
   $$(".mes-tile", root).forEach(btn => btn.addEventListener("click", () => openMesDetalhe(btn.dataset.mes, state)));
+  $$(".btn-editar-transacao", root).forEach(btn => {
+    btn.addEventListener("click", () => {
+      const t = transacoes.find(x => x.id === btn.dataset.id);
+      if (!t) return;
+      openEditTransacaoForm(t);
+    });
+  });
   $$(".btn-excluir-transacao", root).forEach(btn => {
     btn.addEventListener("click", async () => {
       const t = transacoes.find(x => x.id === btn.dataset.id);
